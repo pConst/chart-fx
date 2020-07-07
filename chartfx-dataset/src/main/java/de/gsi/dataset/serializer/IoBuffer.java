@@ -7,12 +7,8 @@ package de.gsi.dataset.serializer;
  * @author rstein
  */
 @SuppressWarnings("PMD.TooManyMethods") // NOPMD - these are short-hand convenience methods
-public interface IoBuffer extends IoBufferHeader<IoBuffer> {
+public interface IoBuffer extends IoBufferHeader {
     int[] getArraySizeDescriptor();
-
-    int putArraySizeDescriptor(int n);
-
-    int putArraySizeDescriptor(int[] dims);
 
     boolean getBoolean(); // NOPMD by rstein
 
@@ -134,59 +130,63 @@ public interface IoBuffer extends IoBufferHeader<IoBuffer> {
      */
     void setEnforceSimpleStringEncoding(boolean state);
 
-    IoBuffer putBoolean(boolean value);
+    int putArraySizeDescriptor(int n);
 
-    IoBuffer putBooleanArray(final boolean[] src, final long offset, final int n);
+    int putArraySizeDescriptor(int[] dims);
 
-    IoBuffer putBooleanArray(final boolean[] src, final long offset, final int[] dims);
+    void putBoolean(boolean value);
 
-    IoBuffer putByte(final byte b);
+    void putBooleanArray(final boolean[] src, final long offset, final int n);
 
-    IoBuffer putByteArray(final byte[] src, final long offset, final int n);
+    void putBooleanArray(final boolean[] src, final long offset, final int[] dims);
 
-    IoBuffer putByteArray(final byte[] src, final long offset, final int[] dims);
+    void putByte(final byte b);
 
-    IoBuffer putChar(char value);
+    void putByteArray(final byte[] src, final long offset, final int n);
 
-    IoBuffer putCharArray(final char[] src, final long offset, final int n);
+    void putByteArray(final byte[] src, final long offset, final int[] dims);
 
-    IoBuffer putCharArray(final char[] src, final long offset, final int[] dims);
+    void putChar(char value);
 
-    IoBuffer putDouble(double value);
+    void putCharArray(final char[] src, final long offset, final int n);
 
-    IoBuffer putDoubleArray(final double[] src, final long offset, final int n);
+    void putCharArray(final char[] src, final long offset, final int[] dims);
 
-    IoBuffer putDoubleArray(final double[] src, final long offset, final int[] dims);
+    void putDouble(double value);
 
-    IoBuffer putFloat(float value);
+    void putDoubleArray(final double[] src, final long offset, final int n);
 
-    IoBuffer putFloatArray(final float[] src, final long offset, final int n);
+    void putDoubleArray(final double[] src, final long offset, final int[] dims);
 
-    IoBuffer putFloatArray(final float[] src, final long offset, final int[] dims);
+    void putFloat(float value);
 
-    IoBuffer putInt(int value);
+    void putFloatArray(final float[] src, final long offset, final int n);
 
-    IoBuffer putIntArray(final int[] src, final long offset, final int n);
+    void putFloatArray(final float[] src, final long offset, final int[] dims);
 
-    IoBuffer putIntArray(final int[] src, final long offset, final int[] dims);
+    void putInt(int value);
 
-    IoBuffer putLong(long value);
+    void putIntArray(final int[] src, final long offset, final int n);
 
-    IoBuffer putLongArray(final long[] src, final long offset, final int n);
+    void putIntArray(final int[] src, final long offset, final int[] dims);
 
-    IoBuffer putLongArray(final long[] src, final long offset, final int[] dims);
+    void putLong(long value);
 
-    IoBuffer putShort(short value); // NOPMD
+    void putLongArray(final long[] src, final long offset, final int n);
 
-    IoBuffer putShortArray(final short[] src, final long offset, final int n); // NOPMD
+    void putLongArray(final long[] src, final long offset, final int[] dims);
 
-    IoBuffer putShortArray(final short[] src, final long offset, final int[] dims); // NOPMD
+    void putShort(short value); // NOPMD
 
-    IoBuffer putString(String string);
+    void putShortArray(final short[] src, final long offset, final int n); // NOPMD
 
-    IoBuffer putStringArray(final String[] src, final long offset, final int n); // NOPMD
+    void putShortArray(final short[] src, final long offset, final int[] dims); // NOPMD
 
-    IoBuffer putStringArray(final String[] src, final long offset, final int[] dims); // NOPMD
+    void putString(String string);
 
-    IoBuffer putStringISO8859(String string);
+    void putStringArray(final String[] src, final long offset, final int n); // NOPMD
+
+    void putStringArray(final String[] src, final long offset, final int[] dims); // NOPMD
+
+    void putStringISO8859(String string);
 }

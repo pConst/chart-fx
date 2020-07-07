@@ -42,7 +42,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("basic primitive array writer tests")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testBasicInterfacePrimitiveArrays(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -245,7 +245,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("basic primitive writer tests")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testBasicInterfacePrimitives(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -392,7 +392,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("basic tests")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testHeaderAndSpecialItems(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -614,7 +614,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("basic primitive array writer tests")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testIndexOutOfBoundsGuards(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -644,7 +644,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("basic primitive array writer tests")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testParseIoStream(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -742,7 +742,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("test getDoubleArray([boolean[], byte[], ..., String[]) helper method")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testGetDoubleArrayHelper(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -768,7 +768,7 @@ public class BinarySerialiserTests {
 
     @DisplayName("test getGenericArrayAsBoxedPrimitive(...) helper method")
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void testgetGenericArrayAsBoxedPrimitiveHelper(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");

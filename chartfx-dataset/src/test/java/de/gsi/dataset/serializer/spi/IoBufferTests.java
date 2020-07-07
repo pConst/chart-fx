@@ -32,7 +32,7 @@ public class IoBufferTests {
     private static final int BUFFER_SIZE = 1000;
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     @SuppressWarnings("PMD.ExcessiveMethodLength")
     public void primitivesArrays(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
@@ -140,7 +140,7 @@ public class IoBufferTests {
     }
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void primitivesMixed(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
@@ -180,7 +180,7 @@ public class IoBufferTests {
     }
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
-    @ValueSource(classes = { FastByteBuffer.class, ByteBuffer.class })
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     public void primitivesSimple(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");

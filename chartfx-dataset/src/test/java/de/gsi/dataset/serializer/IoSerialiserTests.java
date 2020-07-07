@@ -17,6 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.gsi.dataset.serializer.helper.SerialiserHelper;
 import de.gsi.dataset.serializer.helper.TestDataClass;
@@ -95,10 +96,15 @@ public class IoSerialiserTests {
         assertEquals(inputObject, outputObject, "TestDataClass input-output equality");
     }
 
-    @Test
-    public void testIdentityDoubleDataSet() throws IllegalAccessException {
-        final IoBuffer buffer = new FastByteBuffer();
-        final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer); // TODO: generalise to IoBuffer
+    @DisplayName("basic custom serialisation/deserialisation identity")
+    @ParameterizedTest(name = "IoBuffer class - {0} recursion level {1}")
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
+    public void testCustomSerialiserIdentity(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        assertNotNull(bufferClass, "bufferClass being not null");
+        assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
+        final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
+
+        final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer); // TODO: generalise to IoSerialiser
         final IoBufferSerialiser serialiser = new IoBufferSerialiser(ioSerialiser);
 
         final DoubleDataSet inputObject = new DoubleDataSet("inputObject");
@@ -163,18 +169,18 @@ public class IoSerialiserTests {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(
-                    Arguments.of(FastByteBuffer.class, 0),
-                    Arguments.of(FastByteBuffer.class, 1),
-                    Arguments.of(FastByteBuffer.class, 2),
-                    Arguments.of(FastByteBuffer.class, 3),
-                    Arguments.of(FastByteBuffer.class, 4),
-                    Arguments.of(FastByteBuffer.class, 5),
                     Arguments.of(ByteBuffer.class, 0),
                     Arguments.of(ByteBuffer.class, 1),
                     Arguments.of(ByteBuffer.class, 2),
                     Arguments.of(ByteBuffer.class, 3),
                     Arguments.of(ByteBuffer.class, 4),
-                    Arguments.of(ByteBuffer.class, 5));
+                    Arguments.of(ByteBuffer.class, 5),
+                    Arguments.of(FastByteBuffer.class, 0),
+                    Arguments.of(FastByteBuffer.class, 1),
+                    Arguments.of(FastByteBuffer.class, 2),
+                    Arguments.of(FastByteBuffer.class, 3),
+                    Arguments.of(FastByteBuffer.class, 4),
+                    Arguments.of(FastByteBuffer.class, 5));
         }
     }
 }
