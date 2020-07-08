@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 import de.gsi.dataset.serializer.DataType;
 import de.gsi.dataset.serializer.FieldDescription;
 
+import sun.misc.Unsafe;
+
 /**
  * @author rstein
  */
@@ -31,7 +33,7 @@ public class ClassFieldDescription implements FieldDescription {
     public static int maxRecursionLevel = 10;
     private final int hierarchyDepth;
     private final int hashCode;
-    private final Field field; // since we cannot derive from 'final class Field'
+    private final FieldAccess fieldAccess;
     private final String fieldName;
     private final String fieldNameRelative;
     private final FieldDescription parent;
@@ -94,7 +96,7 @@ public class ClassFieldDescription implements FieldDescription {
             if (field == null) {
                 throw new IllegalArgumentException("field must not be null");
             }
-            this.field = field;
+            fieldAccess = new FieldAccess(field);
             classType = field.getType();
             hashCode = field.getName().hashCode();
             fieldName = field.getName();
@@ -102,7 +104,7 @@ public class ClassFieldDescription implements FieldDescription {
 
             modifierID = field.getModifiers();
         } else {
-            this.field = null; // it's a root, no field definition available
+            fieldAccess = null; // it's a root, no field definition available
             classType = referenceClass;
             hashCode = classType.getName().hashCode();
             fieldName = classType.getName();
@@ -234,7 +236,7 @@ public class ClassFieldDescription implements FieldDescription {
     public List<Class<?>> getActualTypeArguments() {
         if (genericTypeList == null) {
             genericTypeList = new ArrayList<>();
-            if ((field == null) || (getGenericType() == null) || !(getGenericType() instanceof ParameterizedType)) {
+            if ((fieldAccess == null) || (getGenericType() == null) || !(getGenericType() instanceof ParameterizedType)) {
                 return genericTypeList;
             }
             final Type[] typeArguments = ((ParameterizedType) getGenericType()).getActualTypeArguments();
@@ -280,9 +282,12 @@ public class ClassFieldDescription implements FieldDescription {
     /**
      * @return the underlying Field type or {@code null} if it's a root node
      */
-    public Field getField() {
-        return field;
+    public FieldAccess getField() {
+        return fieldAccess;
     }
+    //    public Field getField() {
+    //        return fieldAccess == null ? null : fieldAccess.getField();
+    //    }
 
     /**
      * @return the underlying field name
@@ -315,12 +320,12 @@ public class ClassFieldDescription implements FieldDescription {
 
     public Type getGenericType() {
         if (genericType == null) {
-            genericType = field == null ? new Type() {
+            genericType = fieldAccess == null ? new Type() {
                 @Override
                 public String getTypeName() {
                     return "unknown type";
                 }
-            } : field.getGenericType();
+            } : fieldAccess.field.getGenericType();
         }
         return genericType;
     }
@@ -590,5 +595,96 @@ public class ClassFieldDescription implements FieldDescription {
 
     private static String spaces(final int spaces) {
         return CharBuffer.allocate(spaces).toString().replace('\0', ' ');
+    }
+
+    public static class FieldAccess {
+        private static final Unsafe unsafe; // NOPMD
+        static {
+            // get an instance of the otherwise private 'Unsafe' class
+            try {
+                final Field field = Unsafe.class.getDeclaredField("theUnsafe");
+                field.setAccessible(true);
+                unsafe = (Unsafe) field.get(null);
+            } catch (NoSuchFieldException | SecurityException | IllegalAccessException e) {
+                throw new SecurityException(e); // NOPMD
+            }
+        }
+        private final Field field;
+        private final long fieldByteOffset;
+
+        private FieldAccess(final Field field) {
+            this.field = field;
+            field.setAccessible(true);
+
+            long offset = -1;
+            try {
+                offset = unsafe.objectFieldOffset(field);
+            } catch (IllegalArgumentException e) {
+                // fails for private static final fields
+            }
+            this.fieldByteOffset = offset;
+        }
+
+        public Field getField() {
+            return field;
+        }
+
+        public Object get(final Object classReference) {
+            return unsafe.getObject(classReference, fieldByteOffset);
+        }
+
+        public void set(final Object classReference, final Object obj) {
+            unsafe.putObject(classReference, fieldByteOffset, obj);
+        }
+
+        public boolean getBoolean(final Object classReference) {
+            return unsafe.getBoolean(classReference, fieldByteOffset);
+        }
+        public byte getByte(final Object classReference) {
+            return unsafe.getByte(classReference, fieldByteOffset);
+        }
+        public char getChar(final Object classReference) {
+            return unsafe.getChar(classReference, fieldByteOffset);
+        }
+        public short getShort(final Object classReference) { // NOPMD
+            return unsafe.getShort(classReference, fieldByteOffset);
+        }
+        public int getInt(final Object classReference) {
+            return unsafe.getInt(classReference, fieldByteOffset);
+        }
+        public long getLong(final Object classReference) {
+            return unsafe.getLong(classReference, fieldByteOffset);
+        }
+        public float getFloat(final Object classReference) {
+            return unsafe.getFloat(classReference, fieldByteOffset);
+        }
+        public double getDouble(final Object classReference) {
+            return unsafe.getDouble(classReference, fieldByteOffset);
+        }
+
+        public void setBoolean(final Object classReference, final boolean value) {
+            unsafe.putBoolean(classReference, fieldByteOffset, value);
+        }
+        public void setByte(final Object classReference, final byte value) {
+            unsafe.putByte(classReference, fieldByteOffset, value);
+        }
+        public void setChar(final Object classReference, final char value) {
+            unsafe.putChar(classReference, fieldByteOffset, value);
+        }
+        public void setShort(final Object classReference, final short value) { // NOPMD
+            unsafe.putShort(classReference, fieldByteOffset, value);
+        }
+        public void setInt(final Object classReference, final int value) {
+            unsafe.putInt(classReference, fieldByteOffset, value);
+        }
+        public void setLong(final Object classReference, final long value) {
+            unsafe.putLong(classReference, fieldByteOffset, value);
+        }
+        public void setFloat(final Object classReference, final float value) {
+            unsafe.putFloat(classReference, fieldByteOffset, value);
+        }
+        public void setDouble(final Object classReference, final double value) {
+            unsafe.putDouble(classReference, fieldByteOffset, value);
+        }
     }
 }

@@ -88,8 +88,7 @@ public abstract class AbstractSerialiser {
 
     public abstract Object deserialiseObject(final Object obj) throws IllegalAccessException;
 
-    public FieldSerialiser findFieldSerialiserForKnownClassOrInterface(Class<?> clazz,
-            List<Class<?>> classGenericArguments) {
+    public FieldSerialiser findFieldSerialiserForKnownClassOrInterface(Class<?> clazz, List<Class<?>> classGenericArguments) {
         if (clazz == null) {
             throw new IllegalArgumentException("clazz must not be null");
         }
@@ -184,10 +183,13 @@ public abstract class AbstractSerialiser {
         final Object newRoot = root.getField() == null ? rootObj : root.getField().get(rootObj);
         for (final FieldDescription fieldDescription : root.getChildren()) {
             ClassFieldDescription field = (ClassFieldDescription) fieldDescription;
-            final Object reference = field.getField().get(newRoot);
-            if (reference == null) {
-                // only follow and serialise non-null references of sub-classes
-                continue;
+
+            if (!field.isPrimitive()) {
+                final Object reference = field.getField().get(newRoot);
+                if (!field.isPrimitive() && reference == null) {
+                    // only follow and serialise non-null references of sub-classes
+                    continue;
+                }
             }
             serialiseObject(newRoot, field, recursionDepth + 1);
         }
