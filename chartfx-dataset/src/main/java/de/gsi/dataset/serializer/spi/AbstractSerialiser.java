@@ -41,11 +41,13 @@ public abstract class AbstractSerialiser {
         if (serialiser.getGenericsPrototypes() == null) {
             throw new IllegalArgumentException("types must not be null");
         }
-        final List<FieldSerialiser> list = knownClasses().computeIfAbsent(serialiser.getClassPrototype(),
-                key -> new ArrayList<>());
+        synchronized (knownClasses()) {
+            final List<FieldSerialiser> list = knownClasses().computeIfAbsent(serialiser.getClassPrototype(),
+                    key -> new ArrayList<>());
 
-        if (list.isEmpty() || !list.contains(serialiser)) {
-            list.add(serialiser);
+            if (list.isEmpty() || !list.contains(serialiser)) {
+                list.add(serialiser);
+            }
         }
     }
 
@@ -86,7 +88,7 @@ public abstract class AbstractSerialiser {
 
     public abstract Object deserialiseObject(final Object obj) throws IllegalAccessException;
 
-    public Optional<FieldSerialiser> findFieldSerialiserForKnownClassOrInterface(Class<?> clazz,
+    public FieldSerialiser findFieldSerialiserForKnownClassOrInterface(Class<?> clazz,
             List<Class<?>> classGenericArguments) {
         if (clazz == null) {
             throw new IllegalArgumentException("clazz must not be null");
@@ -94,12 +96,12 @@ public abstract class AbstractSerialiser {
         final List<FieldSerialiser> directClassMatchList = classMap.get(clazz);
         if (directClassMatchList != null && !directClassMatchList.isEmpty()) {
             if (directClassMatchList.size() == 1 || classGenericArguments == null || classGenericArguments.isEmpty()) {
-                return Optional.of(directClassMatchList.get(0));
+                return directClassMatchList.get(0);
             }
             // more than one possible serialiser implementation
             for (final FieldSerialiser entry : directClassMatchList) {
                 if (checkClassCompatibility(classGenericArguments, entry.getGenericsPrototypes())) {
-                    return Optional.of(entry);
+                    return entry;
                 }
             }
             // found FieldSerialiser entry but not matching required generic types
@@ -110,7 +112,7 @@ public abstract class AbstractSerialiser {
         final List<Class<?>> potentialMatchingKeys = this.knownClasses().keySet().stream().filter(k -> k.isAssignableFrom(clazz)).collect(Collectors.toList());
         if (potentialMatchingKeys.isEmpty()) {
             // did not find any matching clazz/interface FieldSerialiser entries
-            return Optional.empty();
+            return null;
         }
 
         final List<FieldSerialiser> interfaceMatchList = potentialMatchingKeys.stream()
@@ -120,24 +122,24 @@ public abstract class AbstractSerialiser {
 
         if (interfaceMatchList.size() == 1 || classGenericArguments == null || classGenericArguments.isEmpty()) {
             // found single match FieldSerialiser entry type w/o specific generics requirements
-            return Optional.of(interfaceMatchList.get(0));
+            return interfaceMatchList.get(0);
         }
 
         // more than one possible serialiser implementation
         for (final FieldSerialiser entry : interfaceMatchList) {
             if (checkClassCompatibility(classGenericArguments, entry.getGenericsPrototypes())) {
                 // found generics matching or assignable entry
-                return Optional.of(entry);
+                return entry;
             }
         }
         // could not match with generics arguments
 
         // find generic serialiser entry w/o generics parameter requirements
-        return interfaceMatchList.stream().filter(entry -> entry.getGenericsPrototypes().isEmpty()).findFirst();
+        return interfaceMatchList.stream().filter(entry -> entry.getGenericsPrototypes().isEmpty()).findFirst().get();
     }
 
     public boolean isClassKnown(Class<?> clazz, List<Class<?>> classGenericArguments) {
-        return findFieldSerialiserForKnownClassOrInterface(clazz, classGenericArguments).isPresent();
+        return findFieldSerialiserForKnownClassOrInterface(clazz, classGenericArguments) != null;
     }
 
     public Map<Class<?>, List<FieldSerialiser>> knownClasses() {
@@ -155,15 +157,15 @@ public abstract class AbstractSerialiser {
 
         if (isClassKnown(fieldClass, fieldGenericTypes) && recursionDepth != 0) {
             // serialise known class object
-            final Optional<FieldSerialiser> serialiser = findFieldSerialiserForKnownClassOrInterface(fieldClass, root.getActualTypeArguments());
-            if (serialiser.isEmpty()) {
+            final FieldSerialiser serialiser = findFieldSerialiserForKnownClassOrInterface(fieldClass, root.getActualTypeArguments());
+            if (serialiser == null) {
                 // should not happen (because of 'isClassKnown')
                 throw new IllegalStateException("should not happen -- cannot serialise field - " + root.getFieldNameRelative() + " - class type = " + root.getTypeName());
             }
 
             // write field header
             ioSerialiser.putFieldHeader(root);
-            serialiser.get().getWriterFunction().exec(rootObj, root);
+            serialiser.getWriterFunction().exec(rootObj, root);
             return;
         }
         // cannot serialise field check whether this is a container class and contains serialisable children

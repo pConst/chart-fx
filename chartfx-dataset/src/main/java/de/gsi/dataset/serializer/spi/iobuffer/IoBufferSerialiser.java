@@ -105,9 +105,9 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             return;
         }
 
-        final Optional<FieldSerialiser> serialiser = findFieldSerialiserForKnownClassOrInterface(fieldClass, classFieldDescription.getActualTypeArguments());
+        final FieldSerialiser serialiser = findFieldSerialiserForKnownClassOrInterface(fieldClass, classFieldDescription.getActualTypeArguments());
 
-        if (serialiser.isEmpty()) {
+        if (serialiser == null) {
             final Object ref = classFieldDescription.getField().get(obj);
             final Object subRef;
             if (ref == null) {
@@ -130,7 +130,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
         }
 
         ioSerialiser.getBuffer().position(fieldRoot.getDataStartOffset());
-        serialiser.get().getReaderFunction().exec(obj, classFieldDescription);
+        serialiser.getReaderFunction().exec(obj, classFieldDescription);
     }
 
     @Override
