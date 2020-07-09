@@ -184,10 +184,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
             // TODO: replace with (new to be written) custom SerializerFormatException(..)
             throw new InvalidParameterException("header does not start with a START_MARKER('" + getDataType(DataType.START_MARKER) + "') DataType but " + startMarker + " fieldName = " + headerStartField.getFieldName());
         }
-        buffer.getString(); // should read "#file producer : "
-        // -- but not explicitly checked
         final String producer = buffer.getString();
-        buffer.getString(); // not explicitly checked
         final byte major = buffer.getByte();
         final byte minor = buffer.getByte();
         final byte micro = buffer.getByte();
@@ -363,8 +360,18 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         final long dataStartOffset = buffer.position() + buffer.getInt();
         long dataSize = buffer.getInt();
         final byte dataTypeByte = buffer.getByte();
-        final String fieldName = buffer.getStringISO8859();
-        final DataType dataType = getDataType(dataTypeByte);
+        final String fieldName;
+        if (buffer.position() < dataStartOffset) {
+            fieldName = buffer.getStringISO8859();
+        } else {
+            fieldName = null;
+        }
+        final DataType dataType;
+        if (buffer.position() < dataStartOffset) {
+            dataType = getDataType(dataTypeByte);
+        } else {
+            dataType = null;
+        }
         final String fieldUnit;
         if (buffer.position() < dataStartOffset) {
             fieldUnit = buffer.getString();
@@ -942,9 +949,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         final long addCapacity = 20 + "OBJ_ROOT_START".length() + "#file producer : ".length() + BinarySerialiser.class.getCanonicalName().length();
         buffer.ensureAdditionalCapacity(addCapacity);
         putStartMarker("OBJ_ROOT_START");
-        buffer.putStringISO8859("#file producer : ");
         buffer.putStringISO8859(BinarySerialiser.class.getCanonicalName());
-        buffer.putStringISO8859("\n");
         buffer.putByte(VERSION_MAJOR);
         buffer.putByte(VERSION_MINOR);
         buffer.putByte(VERSION_MICRO);

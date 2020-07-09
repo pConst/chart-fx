@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -61,24 +60,24 @@ public class DataSetSerialiser { // NOPMD
         this.ioSerialiser = ioSerialiser;
     }
 
-    protected Optional<FieldDescription> checkFieldCompatibility(final FieldDescription rootField, final String fieldName, final DataType... requireDataTypes) {
-        Optional<FieldDescription> fieldHeader = rootField.findChildField(fieldName);
-        if (fieldHeader.isEmpty()) {
-            return Optional.empty();
+    protected FieldDescription checkFieldCompatibility(final FieldDescription rootField, final int fieldNameHashCode, final String fieldName, final DataType... requireDataTypes) {
+        FieldDescription fieldHeader = rootField.findChildField(fieldNameHashCode, fieldName);
+        if (fieldHeader == null) {
+            return null;
         }
 
         boolean foundMatchingDataType = false;
         for (DataType dataType : requireDataTypes) {
-            if (fieldHeader.get().getDataType().equals(dataType)) {
+            if (fieldHeader.getDataType().equals(dataType)) {
                 foundMatchingDataType = true;
                 break;
             }
         }
         if (!foundMatchingDataType) {
-            throw new InputMismatchException(fieldName + " is type " + fieldHeader.get().getDataType() + " vs. required type " + Arrays.asList(requireDataTypes).toString());
+            throw new InputMismatchException(fieldName + " is type " + fieldHeader.getDataType() + " vs. required type " + Arrays.asList(requireDataTypes).toString());
         }
 
-        final long dataPosition = fieldHeader.get().getDataStartOffset();
+        final long dataPosition = fieldHeader.getDataStartOffset();
         ioSerialiser.getBuffer().position(dataPosition);
         return fieldHeader;
     }
@@ -92,13 +91,13 @@ public class DataSetSerialiser { // NOPMD
     }
 
     protected void parseDataLabels(final DataSetBuilder builder, final FieldDescription fieldRoot) {
-        if (checkFieldCompatibility(fieldRoot, DATA_LABELS, DataType.MAP).isPresent()) {
+        if (checkFieldCompatibility(fieldRoot, DATA_LABELS.hashCode(), DATA_LABELS, DataType.MAP) != null) {
             Map<Integer, String> map = new ConcurrentHashMap<>();
             map = ioSerialiser.getMap(map);
             builder.setDataLabelMap(map);
         }
 
-        if (checkFieldCompatibility(fieldRoot, DATA_STYLES, DataType.MAP).isPresent()) {
+        if (checkFieldCompatibility(fieldRoot, DATA_STYLES.hashCode(), DATA_STYLES, DataType.MAP) != null) {
             Map<Integer, String> map = new ConcurrentHashMap<>();
             map = ioSerialiser.getMap(map);
             builder.setDataStyleMap(map);
@@ -108,11 +107,11 @@ public class DataSetSerialiser { // NOPMD
     protected void parseHeaders(final IoSerialiser ioSerialiser, final DataSetBuilder builder,
             final FieldDescription fieldRoot) {
         // read strings
-        if (checkFieldCompatibility(fieldRoot, DATA_SET_NAME, DataType.STRING).isPresent()) {
+        if (checkFieldCompatibility(fieldRoot, DATA_SET_NAME.hashCode(), DATA_SET_NAME, DataType.STRING) != null) {
             builder.setName(ioSerialiser.getString());
         }
 
-        if (checkFieldCompatibility(fieldRoot, DIMENSIONS, DataType.INT).isPresent()) {
+        if (checkFieldCompatibility(fieldRoot, DIMENSIONS.hashCode(), DIMENSIONS, DataType.INT) != null) {
             builder.setDimension(ioSerialiser.getInteger());
         }
 
@@ -156,19 +155,19 @@ public class DataSetSerialiser { // NOPMD
     }
 
     protected void parseMetaData(final IoSerialiser ioSerialiser, final DataSetBuilder builder, final FieldDescription rootField) {
-        if (checkFieldCompatibility(rootField, INFO_LIST, DataType.STRING_ARRAY).isPresent()) {
+        if (checkFieldCompatibility(rootField, INFO_LIST.hashCode(), INFO_LIST, DataType.STRING_ARRAY) != null) {
             builder.setMetaInfoList(ioSerialiser.getStringArray());
         }
 
-        if (checkFieldCompatibility(rootField, WARNING_LIST, DataType.STRING_ARRAY).isPresent()) {
+        if (checkFieldCompatibility(rootField, WARNING_LIST.hashCode(), WARNING_LIST, DataType.STRING_ARRAY) != null) {
             builder.setMetaWarningList(ioSerialiser.getStringArray());
         }
 
-        if (checkFieldCompatibility(rootField, ERROR_LIST, DataType.STRING_ARRAY).isPresent()) {
+        if (checkFieldCompatibility(rootField, ERROR_LIST.hashCode(), ERROR_LIST, DataType.STRING_ARRAY) != null) {
             builder.setMetaErrorList(ioSerialiser.getStringArray());
         }
 
-        if (checkFieldCompatibility(rootField, META_INFO, DataType.MAP).isPresent()) {
+        if (checkFieldCompatibility(rootField, META_INFO.hashCode(), META_INFO, DataType.MAP) != null) {
             Map<String, String> map = new ConcurrentHashMap<>();
             map = ioSerialiser.getMap(map);
             builder.setMetaInfoMap(map);

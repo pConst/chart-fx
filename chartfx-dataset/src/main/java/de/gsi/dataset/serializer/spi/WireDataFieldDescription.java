@@ -3,7 +3,6 @@ package de.gsi.dataset.serializer.spi;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,19 +65,18 @@ public class WireDataFieldDescription implements FieldDescription {
     }
 
     @Override
-    public Optional<FieldDescription> findChildField(String fieldName) {
-        final int childHashCode = fieldName.hashCode();
+    public FieldDescription findChildField(final int fieldNameHashCode, final String fieldName) {
         for (int i = 0; i < children.size(); i++) {
             final FieldDescription field = children.get(i);
             final String name = field.getFieldName();
             if (name == fieldName) { // NOPMD early return if the same String object reference
-                return Optional.of(field);
+                return field;
             }
-            if (field.hashCode() == childHashCode && name.equals(fieldName)) {
-                return Optional.of(field);
+            if (field.hashCode() == fieldNameHashCode && name.equals(fieldName)) {
+                return field;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     @Override

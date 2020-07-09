@@ -70,22 +70,6 @@ public abstract class AbstractSerialiser {
         return true;
     }
 
-    public void checkSerialiserAvailability(final List<String> objList, final ClassFieldDescription field) {
-        final boolean classIsKnown = isClassKnown(field.getType(), field.getActualTypeArguments());
-        if (field.isSerializable() && !classIsKnown) {
-            if (field.getChildren().isEmpty()) {
-                final String fieldType = field.getTypeName() + field.getGenericFieldTypeString();
-                if (!objList.contains(fieldType)) {
-                    objList.add(fieldType);
-                }
-            } else {
-                for (FieldDescription child : field.getChildren()) {
-                    checkSerialiserAvailability(objList, (ClassFieldDescription) child);
-                }
-            }
-        }
-    }
-
     public abstract Object deserialiseObject(final Object obj) throws IllegalAccessException;
 
     public FieldSerialiser findFieldSerialiserForKnownClassOrInterface(Class<?> clazz, List<Class<?>> classGenericArguments) {
@@ -108,17 +92,27 @@ public abstract class AbstractSerialiser {
 
         // did not find FieldSerialiser entry by specific class -> search for assignable interface definitions
 
-        final List<Class<?>> potentialMatchingKeys = this.knownClasses().keySet().stream().filter(k -> k.isAssignableFrom(clazz)).collect(Collectors.toList());
+        // N.B. slower stream impl: final List<Class<?>> potentialMatchingKeys = this.knownClasses().keySet().stream().filter(k -> k.isAssignableFrom(clazz)).collect(Collectors.toList());
+        final List<Class<?>> potentialMatchingKeys = new ArrayList<>(10);
+        for (Class<?> testClass : knownClasses().keySet()) {
+            if (testClass.isAssignableFrom(clazz)) {
+                potentialMatchingKeys.add(testClass);
+            }
+        }
         if (potentialMatchingKeys.isEmpty()) {
             // did not find any matching clazz/interface FieldSerialiser entries
             return null;
         }
 
-        final List<FieldSerialiser> interfaceMatchList = potentialMatchingKeys.stream()
-                                                                 .map(key -> this.knownClasses().get(key))
-                                                                 .flatMap(List::stream)
-                                                                 .collect(Collectors.toList());
-
+        // N.B. slower stream impl: final List<FieldSerialiser> interfaceMatchList = potentialMatchingKeys.stream().map(key -> this.knownClasses().get(key)).flatMap(List::stream).collect(Collectors.toList());
+        final List<FieldSerialiser> interfaceMatchList = new ArrayList<>(10);
+        for (Class<?> testClass : potentialMatchingKeys) {
+            final List<FieldSerialiser> fieldSerialisers = knownClasses().get(testClass);
+            if (fieldSerialisers.isEmpty()) {
+                continue;
+            }
+            interfaceMatchList.addAll(fieldSerialisers);
+        }
         if (interfaceMatchList.size() == 1 || classGenericArguments == null || classGenericArguments.isEmpty()) {
             // found single match FieldSerialiser entry type w/o specific generics requirements
             return interfaceMatchList.get(0);
@@ -137,10 +131,6 @@ public abstract class AbstractSerialiser {
         return interfaceMatchList.stream().filter(entry -> entry.getGenericsPrototypes().isEmpty()).findFirst().get();
     }
 
-    public boolean isClassKnown(Class<?> clazz, List<Class<?>> classGenericArguments) {
-        return findFieldSerialiserForKnownClassOrInterface(clazz, classGenericArguments) != null;
-    }
-
     public Map<Class<?>, List<FieldSerialiser>> knownClasses() {
         return classMap;
     }
@@ -149,39 +139,32 @@ public abstract class AbstractSerialiser {
         serialiseObject(obj, ClassDescriptions.get(obj.getClass()), 0);
     }
 
-    public void serialiseObject(final Object rootObj, final ClassFieldDescription root, final int recursionDepth)
-            throws IllegalAccessException {
-        final Class<?> fieldClass = root.getType();
-        final List<Class<?>> fieldGenericTypes = root.getActualTypeArguments();
+    public void serialiseObject(final Object rootObj, final ClassFieldDescription classField, final int recursionDepth) throws IllegalAccessException {
+        // final FieldSerialiser existingSerialiser = classField.getDataType().isScalar() ? classField.getFieldSerialiser() : null;
+        final FieldSerialiser fieldSerialiser = findFieldSerialiserForKnownClassOrInterface(classField.getType(), classField.getActualTypeArguments());
 
-        if (isClassKnown(fieldClass, fieldGenericTypes) && recursionDepth != 0) {
-            // serialise known class object
-            final FieldSerialiser serialiser = findFieldSerialiserForKnownClassOrInterface(fieldClass, root.getActualTypeArguments());
-            if (serialiser == null) {
-                // should not happen (because of 'isClassKnown')
-                throw new IllegalStateException("should not happen -- cannot serialise field - " + root.getFieldNameRelative() + " - class type = " + root.getTypeName());
-            }
-
+        if (fieldSerialiser != null && recursionDepth != 0) {
+            classField.setFieldSerialiser(fieldSerialiser);
             // write field header
-            ioSerialiser.putFieldHeader(root);
-            serialiser.getWriterFunction().exec(rootObj, root);
+            ioSerialiser.putFieldHeader(classField);
+            fieldSerialiser.getWriterFunction().exec(rootObj, classField);
             return;
         }
         // cannot serialise field check whether this is a container class and contains serialisable children
 
-        if (root.getChildren().isEmpty()) {
+        if (classField.getChildren().isEmpty()) {
             // no further children
             return;
         }
 
         // dive into it's children
-        final String subClass = root.getFieldName();
+        final String subClass = classField.getFieldName();
         if (recursionDepth != 0 && startMarkerFunction != null) {
             startMarkerFunction.accept(subClass);
         }
 
-        final Object newRoot = root.getField() == null ? rootObj : root.getField().get(rootObj);
-        for (final FieldDescription fieldDescription : root.getChildren()) {
+        final Object newRoot = classField.getField() == null ? rootObj : classField.getField().get(rootObj);
+        for (final FieldDescription fieldDescription : classField.getChildren()) {
             ClassFieldDescription field = (ClassFieldDescription) fieldDescription;
 
             if (!field.isPrimitive()) {

@@ -20,7 +20,7 @@ import de.gsi.dataset.serializer.spi.FieldSerialiser.FieldSerialiserFunction;
  */
 public class IoBufferSerialiser extends AbstractSerialiser {
     private static final Logger LOGGER = LoggerFactory.getLogger(IoBufferSerialiser.class);
-    private final Map<Integer, WeakHashMap<String, ClassFieldDescription>> fieldToClassFieldDescription = new HashMap<>();
+    private final Map<Integer, HashMap<Integer, ClassFieldDescription>> fieldToClassFieldDescription = new HashMap<>();
 
     /**
      * Initialises new IoBuffer-backed object serialiser
@@ -78,6 +78,11 @@ public class IoBufferSerialiser extends AbstractSerialiser {
 
     protected void deserialise(final Object obj, final FieldDescription fieldRoot, final ClassFieldDescription classFieldDescription, final int recursionDepth) throws IllegalAccessException {
         final String ioName = fieldRoot.getFieldName();
+        if (classFieldDescription.getFieldSerialiser() != null) {
+            ioSerialiser.getBuffer().position(fieldRoot.getDataStartOffset());
+            classFieldDescription.getFieldSerialiser().getReaderFunction().exec(obj, classFieldDescription);
+            return;
+        }
 
         if (fieldRoot.hashCode() != classFieldDescription.hashCode() || !ioName.equals(classFieldDescription.getFieldName())) {
             // did not find matching (sub-)field in class
@@ -87,9 +92,8 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             // check for potential inner fields
             for (final FieldDescription fieldDescription : fieldRoot.getChildren()) {
                 final String fieldName = fieldDescription.getFieldName();
-                Map<String, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new WeakHashMap<>());
-
-                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldName, name -> (ClassFieldDescription) classFieldDescription.findChildField(name).get());
+                Map<Integer, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new HashMap<>());
+                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.hashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
 
                 if (subFieldDescription != null) {
                     deserialise(obj, fieldDescription, subFieldDescription, recursionDepth + 1);
@@ -119,8 +123,8 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             // no specific deserialiser present check for potential inner fields
             for (final FieldDescription fieldDescription : fieldRoot.getChildren()) {
                 final String fieldName = fieldDescription.getFieldName();
-                Map<String, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new WeakHashMap<>());
-                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldName, name -> (ClassFieldDescription) classFieldDescription.findChildField(fieldName).get());
+                Map<Integer, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new HashMap<>());
+                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.hashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
 
                 if (subFieldDescription != null) {
                     deserialise(subRef, fieldDescription, subFieldDescription, recursionDepth + 1);
@@ -129,6 +133,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             return;
         }
 
+        classFieldDescription.setFieldSerialiser(serialiser);
         ioSerialiser.getBuffer().position(fieldRoot.getDataStartOffset());
         serialiser.getReaderFunction().exec(obj, classFieldDescription);
     }

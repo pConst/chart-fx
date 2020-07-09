@@ -9,7 +9,6 @@ import java.lang.reflect.Type;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -66,6 +65,8 @@ public class ClassFieldDescription implements FieldDescription {
     private List<String> genericTypeNameList; // computed on demand and cached
     private String genericTypeNames; // computed on demand and cached
     private String modifierStr; // computed on demand and cached
+    // serialiser info
+    private FieldSerialiser fieldSerialiser;
 
     /**
      * This should be called only once with the root class as an argument
@@ -203,19 +204,18 @@ public class ClassFieldDescription implements FieldDescription {
     }
 
     @Override
-    public Optional<FieldDescription> findChildField(final String fieldName) {
-        final int fieldNameHashCode = fieldName.hashCode();
+    public FieldDescription findChildField(final int fieldNameHashCode, final String fieldName) {
         for (int i = 0; i < children.size(); i++) {
             final FieldDescription child = children.get(i);
             final String name = child.getFieldName();
             if (name == fieldName) { // NOPMD early return if the same String object reference
-                return Optional.of(child);
+                return child;
             }
             if (child.hashCode() == fieldNameHashCode && name.equals(fieldName)) {
-                return Optional.of(child);
+                return child;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     /**
@@ -272,8 +272,7 @@ public class ClassFieldDescription implements FieldDescription {
     }
 
     /**
-     * @return the DataType (if known) for the detected Field, {@link de.gsi.dataset.serializer.DataType#OTHER} in all
-     *         other cases
+     * @return the DataType (if known) for the detected Field, {@link de.gsi.dataset.serializer.DataType#OTHER} in all other cases
      */
     public DataType getDataType() {
         return dataType;
@@ -285,9 +284,6 @@ public class ClassFieldDescription implements FieldDescription {
     public FieldAccess getField() {
         return fieldAccess;
     }
-    //    public Field getField() {
-    //        return fieldAccess == null ? null : fieldAccess.getField();
-    //    }
 
     /**
      * @return the underlying field name
@@ -301,6 +297,17 @@ public class ClassFieldDescription implements FieldDescription {
      */
     public String getFieldNameRelative() {
         return fieldNameRelative;
+    }
+    //    public Field getField() {
+    //        return fieldAccess == null ? null : fieldAccess.getField();
+    //    }
+
+    public FieldSerialiser getFieldSerialiser() {
+        return fieldSerialiser;
+    }
+
+    public void setFieldSerialiser(final FieldSerialiser fieldSerialiser) {
+        this.fieldSerialiser = fieldSerialiser;
     }
 
     /**
@@ -599,6 +606,8 @@ public class ClassFieldDescription implements FieldDescription {
 
     public static class FieldAccess {
         private static final Unsafe unsafe; // NOPMD
+        private final Field field;
+        private final long fieldByteOffset;
         static {
             // get an instance of the otherwise private 'Unsafe' class
             try {
@@ -609,8 +618,6 @@ public class ClassFieldDescription implements FieldDescription {
                 throw new SecurityException(e); // NOPMD
             }
         }
-        private final Field field;
-        private final long fieldByteOffset;
 
         private FieldAccess(final Field field) {
             this.field = field;
@@ -625,29 +632,31 @@ public class ClassFieldDescription implements FieldDescription {
             this.fieldByteOffset = offset;
         }
 
-        public Field getField() {
-            return field;
-        }
-
         public Object get(final Object classReference) {
             return unsafe.getObject(classReference, fieldByteOffset);
-        }
-
-        public void set(final Object classReference, final Object obj) {
-            unsafe.putObject(classReference, fieldByteOffset, obj);
         }
 
         public boolean getBoolean(final Object classReference) {
             return unsafe.getBoolean(classReference, fieldByteOffset);
         }
+
         public byte getByte(final Object classReference) {
             return unsafe.getByte(classReference, fieldByteOffset);
         }
+
         public char getChar(final Object classReference) {
             return unsafe.getChar(classReference, fieldByteOffset);
         }
-        public short getShort(final Object classReference) { // NOPMD
-            return unsafe.getShort(classReference, fieldByteOffset);
+
+        public double getDouble(final Object classReference) {
+            return unsafe.getDouble(classReference, fieldByteOffset);
+        }
+
+        public Field getField() {
+            return field;
+        }
+        public float getFloat(final Object classReference) {
+            return unsafe.getFloat(classReference, fieldByteOffset);
         }
         public int getInt(final Object classReference) {
             return unsafe.getInt(classReference, fieldByteOffset);
@@ -655,13 +664,12 @@ public class ClassFieldDescription implements FieldDescription {
         public long getLong(final Object classReference) {
             return unsafe.getLong(classReference, fieldByteOffset);
         }
-        public float getFloat(final Object classReference) {
-            return unsafe.getFloat(classReference, fieldByteOffset);
+        public short getShort(final Object classReference) { // NOPMD
+            return unsafe.getShort(classReference, fieldByteOffset);
         }
-        public double getDouble(final Object classReference) {
-            return unsafe.getDouble(classReference, fieldByteOffset);
+        public void set(final Object classReference, final Object obj) {
+            unsafe.putObject(classReference, fieldByteOffset, obj);
         }
-
         public void setBoolean(final Object classReference, final boolean value) {
             unsafe.putBoolean(classReference, fieldByteOffset, value);
         }
@@ -671,20 +679,25 @@ public class ClassFieldDescription implements FieldDescription {
         public void setChar(final Object classReference, final char value) {
             unsafe.putChar(classReference, fieldByteOffset, value);
         }
-        public void setShort(final Object classReference, final short value) { // NOPMD
-            unsafe.putShort(classReference, fieldByteOffset, value);
+
+        public void setDouble(final Object classReference, final double value) {
+            unsafe.putDouble(classReference, fieldByteOffset, value);
         }
-        public void setInt(final Object classReference, final int value) {
-            unsafe.putInt(classReference, fieldByteOffset, value);
-        }
-        public void setLong(final Object classReference, final long value) {
-            unsafe.putLong(classReference, fieldByteOffset, value);
-        }
+
         public void setFloat(final Object classReference, final float value) {
             unsafe.putFloat(classReference, fieldByteOffset, value);
         }
-        public void setDouble(final Object classReference, final double value) {
-            unsafe.putDouble(classReference, fieldByteOffset, value);
+
+        public void setInt(final Object classReference, final int value) {
+            unsafe.putInt(classReference, fieldByteOffset, value);
+        }
+
+        public void setLong(final Object classReference, final long value) {
+            unsafe.putLong(classReference, fieldByteOffset, value);
+        }
+
+        public void setShort(final Object classReference, final short value) { // NOPMD
+            unsafe.putShort(classReference, fieldByteOffset, value);
         }
     }
 }
