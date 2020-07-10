@@ -28,7 +28,7 @@ public enum DataType {
     // @formatter:off
     // clang-format off
     // start marker
-    START_MARKER(0, "start_marker", "", 1, Cat.SINGLE_VALUE),
+    START_MARKER(0, "start_marker", "", 0, Cat.SINGLE_VALUE),
     // primitive types
     BOOL(1, "bool", "boolean", 1, Cat.SINGLE_VALUE, boolean.class, Boolean.class),
     BYTE(2, "byte", "byte", 1, Cat.SINGLE_VALUE, byte.class, Byte.class),
@@ -38,7 +38,7 @@ public enum DataType {
     FLOAT(6, "float", "float", 4, Cat.SINGLE_VALUE, float.class, Float.class),
     DOUBLE(7, "double", "double", 8, Cat.SINGLE_VALUE, double.class, Double.class),
     CHAR(8, "char", "char", 2, Cat.SINGLE_VALUE, char.class, Character.class),
-    STRING(9, "string", "java.lang.String", 1, Cat.SINGLE_VALUE, String.class),
+    STRING(9, "string", "java.lang.String", 1, Cat.ARRAY, String.class),
 
     // array of primitive types
     BOOL_ARRAY(101, "bool_array", "[Z", 1, Cat.ARRAY, boolean[].class, Boolean[].class),
@@ -63,7 +63,7 @@ public enum DataType {
      * by an additional user-provided custom type ID */
     OTHER(0xFD, "other", "", 1, Cat.COMPLEX_OBJECT, Object.class),
     // end marker
-    END_MARKER(0xFE, "end_marker", "", 1, Cat.SINGLE_VALUE);
+    END_MARKER(0xFE, "end_marker", "", 0, Cat.SINGLE_VALUE);
     // clang-format on
     // @formatter:on
 
@@ -153,7 +153,7 @@ public enum DataType {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Entry type '" + value + "' is not supported");
+        throw new IllegalArgumentException("byte entry type is not supported: " + value);
     }
 
     /**
@@ -164,15 +164,12 @@ public enum DataType {
      */
     public static DataType fromClassType(final Class<?> classType) {
         for (final DataType dataType : DataType.values()) {
-            for (Class type : dataType.getClassTypes()) {
+            for (Class<?> type : dataType.getClassTypes()) {
                 if (type.isAssignableFrom(classType)) {
                     return dataType;
                 }
             }
         }
-
-        // unknown data type returning generic 'OTHER'
-        // return DataType.OTHER;
 
         throw new IllegalArgumentException("data type not implemented " + classType.getSimpleName());
     }
@@ -189,7 +186,7 @@ public enum DataType {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Entry type '" + str + "' is not supported");
+        throw new IllegalArgumentException("java string entry type is not supported: '" + str + "'");
     }
 
     /**
@@ -204,6 +201,6 @@ public enum DataType {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Entry type '" + str + "' is not supported");
+        throw new IllegalArgumentException("string entry type is not supported: '" + str + "'");
     }
 }

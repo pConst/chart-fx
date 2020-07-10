@@ -26,7 +26,7 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
         writerFunction = this::execFieldWriter;
     }
 
-    protected final void execFieldReader(final Object obj, ClassFieldDescription field) throws IllegalAccessException {
+    protected final void execFieldReader(final Object obj, ClassFieldDescription field) {
         Collection<AxisDescription> setVal = (Collection<AxisDescription>) field.getField().get(obj); // NOPMD
         // N.B. cast should fail at runtime (points to lib inconsistency)
         setVal.clear();
@@ -45,8 +45,7 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
         field.getField().set(obj, setVal);
     }
 
-    protected void execFieldWriter(Object obj, ClassFieldDescription field) throws IllegalAccessException {
-        final String fieldName = field.getFieldName();
+    protected void execFieldWriter(Object obj, ClassFieldDescription field) {
         final List<AxisDescription> axisDescriptions = (List<AxisDescription>) field.getField().get(obj); // NOPMD
         // N.B. cast should fail at runtime (points to lib inconsistency)
 
@@ -61,6 +60,6 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
             ioSerialiser.put(axis.getMin());
             ioSerialiser.put(axis.getMax());
         }
-        ioSerialiser.updateDataEndMarker();
+        ioSerialiser.updateDataEndMarker(null);
     }
 }

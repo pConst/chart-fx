@@ -12,6 +12,10 @@ public interface IoSerialiser {
 
     boolean[] getBooleanArray();
 
+    boolean isPutFieldMetaData();
+
+    void setPutFieldMetaData(boolean putFieldMetaData);
+
     IoBuffer getBuffer();
 
     void setBuffer(final IoBuffer buffer);
@@ -66,7 +70,7 @@ public interface IoSerialiser {
 
     String[] getStringArray();
 
-    WireDataFieldDescription parseIoStream();
+    WireDataFieldDescription parseIoStream(final boolean readHeader);
 
     void put(boolean value);
 
@@ -131,11 +135,9 @@ public interface IoSerialiser {
 
     void putEndMarker(String markerName);
 
-    void putFieldHeader(final FieldDescription fieldDescription);
+    WireDataFieldDescription putFieldHeader(final FieldDescription fieldDescription);
 
-    void putFieldHeader(final String fieldName, DataType dataType);
-
-    void putFieldHeader(final String fieldName, DataType dataType, int additionalSize);
+    WireDataFieldDescription putFieldHeader(final String fieldName, DataType dataType);
 
     /**
      * Adds header and version information
@@ -144,5 +146,5 @@ public interface IoSerialiser {
 
     void putStartMarker(String markerName);
 
-    void updateDataEndMarker();
+    WireDataFieldDescription updateDataEndMarker(WireDataFieldDescription fieldHeader, int... offset);
 }

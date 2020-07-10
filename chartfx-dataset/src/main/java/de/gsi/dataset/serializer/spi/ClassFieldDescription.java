@@ -271,6 +271,11 @@ public class ClassFieldDescription implements FieldDescription {
         return 0;
     }
 
+    @Override
+    public long getDataStartPosition() {
+        return 0;
+    }
+
     /**
      * @return the DataType (if known) for the detected Field, {@link de.gsi.dataset.serializer.DataType#OTHER} in all other cases
      */
@@ -298,9 +303,11 @@ public class ClassFieldDescription implements FieldDescription {
     public String getFieldNameRelative() {
         return fieldNameRelative;
     }
-    //    public Field getField() {
-    //        return fieldAccess == null ? null : fieldAccess.getField();
-    //    }
+
+    @Override
+    public long getFieldStart() {
+        throw new UnsupportedOperationException("not implemented");
+    }
 
     public FieldSerialiser getFieldSerialiser() {
         return fieldSerialiser;
@@ -545,7 +552,7 @@ public class ClassFieldDescription implements FieldDescription {
         final String enumOrClass = field.isEnum() ? "Enum " : "class ";
         final String typeCategorgy = (field.isInterface() ? "interface " : (field.isPrimitive() ? "" : enumOrClass));
         final String typeName = field.getTypeName() + field.getGenericFieldTypeString();
-        final String mspace = spaces((recursionLevel + 1) * INDENTATION_NUMER_OF_SPACE);
+        final String mspace = spaces(recursionLevel * INDENTATION_NUMER_OF_SPACE);
         final boolean isSerialisable = field.isSerializable();
 
         if (isSerialisable || fullView) {

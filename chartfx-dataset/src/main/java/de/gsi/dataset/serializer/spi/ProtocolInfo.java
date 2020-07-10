@@ -9,7 +9,7 @@ public class ProtocolInfo extends WireDataFieldDescription {
     private final byte versionMicro;
 
     ProtocolInfo(final String producer, final byte major, final byte minor, final byte micro) {
-        super(null, producer.hashCode(), producer, DataType.START_MARKER, -1, -1);
+        super(null, producer.hashCode(), producer, DataType.START_MARKER, -1, -1, -1);
         producerName = producer;
         versionMajor = major;
         versionMinor = minor;
@@ -17,7 +17,7 @@ public class ProtocolInfo extends WireDataFieldDescription {
     }
 
     ProtocolInfo(WireDataFieldDescription fieldDescription, final String producer, final byte major, final byte minor, final byte micro) {
-        super(null, fieldDescription.hashCode(), fieldDescription.getFieldName(), fieldDescription.getDataType(), fieldDescription.getDataStartOffset(), fieldDescription.getDataSize());
+        super(null, fieldDescription.hashCode(), fieldDescription.getFieldName(), fieldDescription.getDataType(), fieldDescription.getFieldStart(), fieldDescription.getDataStartOffset(), fieldDescription.getDataSize());
         producerName = producer;
         versionMajor = major;
         versionMinor = minor;

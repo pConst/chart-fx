@@ -13,11 +13,15 @@ public interface FieldDescription {
 
     long getDataStartOffset();
 
+    long getDataStartPosition();
+
     DataType getDataType();
 
     String getFieldName();
 
     String getFieldNameRelative();
+
+    long getFieldStart();
 
     FieldDescription getParent();
 

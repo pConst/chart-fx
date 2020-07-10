@@ -33,15 +33,12 @@ public final class FieldDataSetHelper {
                     if (!DataSet.class.getName().equals(dataSetType)) {
                         throw new IllegalArgumentException("unknown DataSet type = " + dataSetType);
                     }
-
                     field.getField().set(obj, new DataSetSerialiser(ioBuffer).readDataSetFromByteArray());
                 }, // reader
                 (obj, field) -> {
                     final DataSet retVal = (DataSet) (field.getField() == null ? obj : field.getField().get(obj));
-
                     ioBuffer.getBuffer().putString(DataSet.class.getName());
                     new DataSetSerialiser(ioBuffer).writeDataSetToByteArray(retVal, false);
-                    ioBuffer.updateDataEndMarker();
                 }, // writer
                 DataSet.class));
 

@@ -28,6 +28,7 @@ import de.gsi.dataset.testdata.spi.TriangleFunction;
 
 /**
  * @author Alexander Krimm
+ * @author rstein
  */
 class DataSetSerialiserTests {
     private static final int BUFFER_SIZE = 10000;

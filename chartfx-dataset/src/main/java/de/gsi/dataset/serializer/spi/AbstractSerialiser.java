@@ -146,8 +146,9 @@ public abstract class AbstractSerialiser {
         if (fieldSerialiser != null && recursionDepth != 0) {
             classField.setFieldSerialiser(fieldSerialiser);
             // write field header
-            ioSerialiser.putFieldHeader(classField);
+            final WireDataFieldDescription header = ioSerialiser.putFieldHeader(classField);
             fieldSerialiser.getWriterFunction().exec(rootObj, classField);
+            ioSerialiser.updateDataEndMarker(header);
             return;
         }
         // cannot serialise field check whether this is a container class and contains serialisable children

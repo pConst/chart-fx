@@ -21,10 +21,11 @@ public class WireDataFieldDescription implements FieldDescription {
     private final String fieldName;
     private final String fieldNameRelative;
     private final DataType dataType;
-    private final long dataStartOffset;
-    private final long dataSize;
     private final List<FieldDescription> children = new ArrayList<>();
-    private FieldDescription parent; // N.B. was 'final' TODO: investigate to keep last root once BinarySerialiser is refactored to a non-static class
+    private final FieldDescription parent;
+    private long fieldStart;
+    private long dataStartOffset;
+    private long dataSize;
 
     /**
      * Constructs new serializer field header
@@ -35,18 +36,26 @@ public class WireDataFieldDescription implements FieldDescription {
      *                         this check is being suppressed
      * @param fieldName the clear text field name description
      * @param dataType the data type of that field
+     * @param fieldStart the absolute buffer position from which the field header can be parsed
      * @param dataStartOffset the position from which the actual data can be parsed onwards
      * @param dataSize the expected number of bytes to skip the data block
      */
-    public WireDataFieldDescription(final WireDataFieldDescription parent, final int fieldNameHashCode, final String fieldName, final DataType dataType, final long dataStartOffset, final long dataSize) {
+    public WireDataFieldDescription(final WireDataFieldDescription parent, final int fieldNameHashCode, final String fieldName, final DataType dataType, //
+            final long fieldStart, final long dataStartOffset, final long dataSize) {
         this.parent = parent;
         this.hashCode = fieldNameHashCode;
         this.fieldName = fieldName;
         this.dataType = dataType;
+        this.fieldStart = fieldStart;
         this.dataStartOffset = dataStartOffset;
         this.dataSize = dataSize;
 
-        fieldNameRelative = this.parent == null ? fieldName : parent.getFieldNameRelative() + "." + fieldName;
+        if (this.parent == null) {
+            fieldNameRelative = fieldName;
+        } else {
+            fieldNameRelative = parent.getFieldNameRelative() + "." + fieldName;
+            parent.getChildren().add(this);
+        }
     }
 
     @Override
@@ -66,10 +75,10 @@ public class WireDataFieldDescription implements FieldDescription {
 
     @Override
     public FieldDescription findChildField(final int fieldNameHashCode, final String fieldName) {
-        for (int i = 0; i < children.size(); i++) {
+        for (int i = 0; i < children.size(); i++) { //NOSONAR
             final FieldDescription field = children.get(i);
             final String name = field.getFieldName();
-            if (name == fieldName) { // NOPMD early return if the same String object reference
+            if (name == fieldName) { //NOSONAR //NOPMD early return if the same String object reference
                 return field;
             }
             if (field.hashCode() == fieldNameHashCode && name.equals(fieldName)) {
@@ -89,9 +98,22 @@ public class WireDataFieldDescription implements FieldDescription {
         return dataSize;
     }
 
+    public void setDataSize(final long size) {
+        dataSize = size;
+    }
+
     @Override
     public long getDataStartOffset() {
         return dataStartOffset;
+    }
+
+    public void setDataStartOffset(final long offset) {
+        dataStartOffset = offset;
+    }
+
+    @Override
+    public long getDataStartPosition() {
+        return fieldStart + dataStartOffset;
     }
 
     @Override
@@ -110,12 +132,17 @@ public class WireDataFieldDescription implements FieldDescription {
     }
 
     @Override
-    public FieldDescription getParent() {
-        return parent;
+    public long getFieldStart() {
+        return fieldStart;
     }
 
-    void setParent(final WireDataFieldDescription parent) { // NOPMD - explicitly package private -> TODO: will be refactored
-        this.parent = parent;
+    public void setFieldStart(final long position) {
+        fieldStart = position;
+    }
+
+    @Override
+    public FieldDescription getParent() {
+        return parent;
     }
 
     @Override
@@ -141,7 +168,7 @@ public class WireDataFieldDescription implements FieldDescription {
 
     @Override
     public String toString() {
-        return String.format("[fieldName=%s, fieldType=%s]", fieldName, dataType.getAsString());
+        return String.format("[fieldName=%s, fieldNameRelative=%s, fieldType=%s]", fieldName, fieldNameRelative, dataType.getAsString());
     }
 
     protected static void printFieldStructure(final FieldDescription field, final int recursionLevel) {

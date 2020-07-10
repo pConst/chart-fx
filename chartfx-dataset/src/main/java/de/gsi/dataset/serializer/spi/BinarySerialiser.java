@@ -1,7 +1,6 @@
 package de.gsi.dataset.serializer.spi;
 
 import java.lang.reflect.Method;
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -47,22 +46,31 @@ import de.gsi.dataset.utils.GenericsHelper;
  * <p>
  * <b>raw-byte level protocol</b>: above data items are stored as follows:
  * <pre><code>
- * * header info:   [ start marker ] + 
- *                      [ "#file producer : ": String ] + 
- *                      [ clear text serialiser name: String ] + // e.g. "de.gsi.dataset.serializer.spi.BinarySerialiser"
- *                      [ "\n":String ] + 
- *                      [ 1 byte - major protocol version ] +
- *                      [ 1 byte - minor protocol version ] +
- *                      [ 1 byte - micro protocol version ] // micro: non API-changing bug fixes in implementation 
- * * start marker:  [ String - field name ][ 1 byte - uniqueType (0x00) ]
- * * String:        [ 4 bytes (int) - length (including termination) ][ n bytes based on latin1 encoding ]
- * * field header:  [ String - field name ] + [ 1 byte - uniqueType ]
- * * primitives:    [ field header  ] + [ 1-8 bytes depending on DataType ]
- * * prim. arrays:  [ array header  ] + [   ]=1-8 bytes x N_i or more - array data depending on variable DataType ]
+ * * header info:   [ 4 bytes = 0x0000002A] // magic number used as coarse protocol identifier - precise protocol refined by further fields below
+ *                  [ clear text serialiser name: String ] + // e.g. "de.gsi.dataset.serializer.spi.BinarySerialiser"
+ *                  [ 1 byte - major protocol version ] +
+ *                  [ 1 byte - minor protocol version ] +
+ *                  [ 1 byte - micro protocol version ] // micro: non API-changing bug fixes in implementation
+ *                  [ field header for 'start marker' ] [ 1 byte - uniqueType (0x00) ]
+ * * String:        [ 4 bytes (int) - length (including termination) ][ n bytes based on ISO-8859 or UTF-8 encoding ]
+ * * field header:  # start field header 'p0'
+ *                  [ 1 byte - uniqueType ]
+ *                  [ 4 bytes - field name hash code] // enables faster field matching
+ *                  [ 4 bytes - dataStart = n bytes until data start] // counted w.r.t. field header start
+ *                  [ 4 bytes - dataSize = n bytes for data size]
+ *                  [ String (ISO-8859) - field name ]             // optional, if there are no field name hash code collisions
+ *                  N.B. following fields are optional (detectable if buffer position smaller than 'p0' + dataStart)
+ *                  [ String (UTF-8)    - field unit ]
+ *                  [ String (UTF-8)    - field in/out direction ]
+ *                  [ String (UTF-8)    - field groups ]
+ *                  # start data = 'p0' + dataStart
+ *                  ... type specific and/or custom data serialisation
+ *                  # end data = 'p0' + dataStart + dataSize
+ * * primitives:    [ field header for 'primitive type ID'] + [ 1-8 bytes depending on DataType ]
+ * * prim. arrays:  [ array header for 'prim. type array ID'] + [   ]=1-8 bytes x N_i or more - array data depending on variable DataType ]
  * * boxed arrays:  as above but each element cast to corresponding primitive type
- * * array header:  [ field header  ] + 
- *                      [4 bytes - number of bytes to skip until data end (-1: uninitialised) ] +
- *                      [4 bytes - number of dimensions N_d ] + 
+ * * array header:  [ field header (as above) ] +
+ *                      [4 bytes - number of dimensions N_d ] +
  *                      [4 bytes x N_d - vector sizes for each dimension N_i ]  
  * * Collection[E]:
  * * List[]:
@@ -72,11 +80,12 @@ import de.gsi.dataset.utils.GenericsHelper;
  * * Map[K,V]:      [ array header (uniqueType=0xCB) ] + [ 1 byte - uniqueType of K ] +  [ 1 byte - uniqueType of V ] +
  *                      [ n bytes - array of K cast to primitive type and/or string ] + 
  *                      [ n bytes - array of V cast to primitive type and/or string ]
- * * OTHER          [ field header - uniqueByte = 0xFD ] + 
- *                      [ 4 bytes - number of bytes to skip until data end (-1: uninitialised) ] +
- *                      [ 1 byte - uniqueType -- custom definition ]
+ * * OTHER          [ field header - uniqueByte = 0xFD ] +
+ *                      [ 1 byte - uniqueType -- custom class type definition ]
+ *                      [ String (ISO-8859) - class type name ]
  *                      [ n bytes - custom serialisation definition ]
- * * end marker:    [ String - field name ][ 1 byte - uniqueType (0xFE) ]
+ * * start marker:  [ field header for '0x00' ] // dataSize == # bytes until the corresponding end-marker start
+ * * end marker:    [ field header for '0xFE' ]
  * 
  * * nesting or sub-structures (ie. POJOs with sub-classes) can be achieved via:
  * [  start marker - field name == nesting context1 ] 
@@ -95,6 +104,7 @@ import de.gsi.dataset.utils.GenericsHelper;
  */
 @SuppressWarnings({ "PMD.CommentSize", "PMD.ExcessivePublicCount", "PMD.PrematureDeclaration", "unused" }) // variables need to be read from stream
 public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
+    public static final int VERSION_MAGIC_NUMBER = 0x0000002A;
     public static final byte VERSION_MAJOR = 1;
     public static final byte VERSION_MINOR = 0;
     public static final byte VERSION_MICRO = 0;
@@ -147,10 +157,9 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     protected final ProtocolInfo headerInfo = new ProtocolInfo(BinarySerialiser.class.getCanonicalName(), VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     private int bufferIncrements;
     private IoBuffer buffer;
+    private boolean putFieldMetaData;
     private WireDataFieldDescription parent;
     private WireDataFieldDescription lastFieldHeader;
-    private long fieldHeaderDataEndMarkerPosition;
-    private long fieldHeaderDataStart;
 
     /**
      * @param buffer the backing IoBuffer (see e.g. {@link de.gsi.dataset.serializer.spi.FastByteBuffer} or{@link de.gsi.dataset.serializer.spi.ByteBuffer}
@@ -160,40 +169,23 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         this.buffer = buffer;
     }
 
-    public IoBuffer getBuffer() {
-        return buffer;
-    }
-
-    public void setBuffer(final IoBuffer buffer) {
-        this.buffer = buffer;
-    }
-
-    @Override
-    public void updateDataEndMarker() {
-        final long sizeMarkerEnd = buffer.position();
-        buffer.position(fieldHeaderDataEndMarkerPosition);
-        buffer.putInt((int) (sizeMarkerEnd - fieldHeaderDataStart));
-        buffer.position(sizeMarkerEnd);
-    }
-
     @Override
     public ProtocolInfo checkHeaderInfo() {
-        final WireDataFieldDescription headerStartField = getFieldHeader();
-        final byte startMarker = buffer.getByte();
-        if (startMarker != getDataType(DataType.START_MARKER)) {
-            // TODO: replace with (new to be written) custom SerializerFormatException(..)
-            throw new InvalidParameterException("header does not start with a START_MARKER('" + getDataType(DataType.START_MARKER) + "') DataType but " + startMarker + " fieldName = " + headerStartField.getFieldName());
-        }
+        final int magicNumber = buffer.getInt();
         final String producer = buffer.getString();
         final byte major = buffer.getByte();
         final byte minor = buffer.getByte();
         final byte micro = buffer.getByte();
 
+        final WireDataFieldDescription headerStartField = getFieldHeader();
         final ProtocolInfo header = new ProtocolInfo(headerStartField, producer, major, minor, micro);
 
+        if (magicNumber != VERSION_MAGIC_NUMBER) {
+            throw new IllegalStateException("byte buffer version magic byte incompatible: received '" + magicNumber + "' vs. should '" + VERSION_MAGIC_NUMBER + "'");
+        }
+
         if (!header.isCompatible()) {
-            final String msg = String.format("byte buffer version incompatible: received '%s' vs. this '%s'", header.toString(), headerInfo.toString());
-            throw new IllegalStateException(msg);
+            throw new IllegalStateException("byte buffer version incompatible: received '" + header.toString() + "' vs. should '" + headerInfo.toString() + "'");
         }
         return header;
     }
@@ -214,13 +206,12 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
     }
 
-    public int getBufferIncrements() {
-        return bufferIncrements;
+    public IoBuffer getBuffer() {
+        return buffer;
     }
 
-    public void setBufferIncrements(final int bufferIncrements) {
-        AssertUtils.gtEqThanZero("bufferIncrements", bufferIncrements);
-        this.bufferIncrements = bufferIncrements;
+    public int getBufferIncrements() {
+        return bufferIncrements;
     }
 
     @Override
@@ -240,16 +231,16 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
+    public char[] getCharArray() {
+        return buffer.getCharArray();
+    }
+
+    @Override
     public char getCharacter() {
         if (buffer.hasRemaining()) {
             return buffer.getChar();
         }
         throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public char[] getCharArray() {
-        return buffer.getCharArray();
     }
 
     @Override
@@ -356,67 +347,71 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
     @Override
     public WireDataFieldDescription getFieldHeader() {
-        final int fieldNameHashCode = buffer.getInt();
-        final long dataStartOffset = buffer.position() + buffer.getInt();
-        long dataSize = buffer.getInt();
+        final long headerStart = buffer.position();
         final byte dataTypeByte = buffer.getByte();
+        final int fieldNameHashCode = buffer.getInt();
+        final long dataStartOffset = buffer.getInt();
+        final long dataStartPosition = headerStart + dataStartOffset;
+        long dataSize = buffer.getInt();
         final String fieldName;
-        if (buffer.position() < dataStartOffset) {
+        if (buffer.position() < dataStartPosition) {
             fieldName = buffer.getStringISO8859();
         } else {
             fieldName = null;
         }
-        final DataType dataType;
-        if (buffer.position() < dataStartOffset) {
-            dataType = getDataType(dataTypeByte);
-        } else {
-            dataType = null;
-        }
+        final DataType dataType = getDataType(dataTypeByte);
+
+        // optional data
         final String fieldUnit;
-        if (buffer.position() < dataStartOffset) {
+        if (buffer.position() < dataStartPosition) {
             fieldUnit = buffer.getString();
         } else {
             fieldUnit = null;
         }
         final String fieldDescription;
-        if (buffer.position() < dataStartOffset) {
+        if (buffer.position() < dataStartPosition) {
             fieldDescription = buffer.getString();
         } else {
             fieldDescription = null;
         }
         final String fieldDirection;
-        if (buffer.position() < dataStartOffset) {
+        if (buffer.position() < dataStartPosition) {
             fieldDirection = buffer.getString();
         } else {
             fieldDirection = null;
         }
         final String fieldGroups;
-        if (buffer.position() < dataStartOffset) {
+        if (buffer.position() < dataStartPosition) {
             fieldGroups = buffer.getString();
         } else {
             fieldGroups = null;
         }
-        if (buffer.position() != dataStartOffset) {
-            final long diff = dataStartOffset - buffer.position();
-            throw new IllegalStateException("could not parse FieldHeader: fieldName='" + fieldName + "'" //
-                                            + " buffer position = " + buffer.position() + " vs. " + dataStartOffset + " diff = " + diff + " bytes");
+
+        // check for header-dataStart offset consistentcy
+        if (buffer.position() != dataStartPosition) {
+            final long diff = dataStartPosition - buffer.position();
+            throw new IllegalStateException("could not parse FieldHeader: fieldName='" + dataType + ":" + fieldName + "' dataOffset = " + dataStartOffset + " bytes (read) -- " //
+                                            + " buffer position is " + buffer.position() + " vs. calculated " + dataStartPosition + " diff = " + diff);
         }
 
-        if (dataType.isScalar() && dataSize < 0) {
-            if (dataType == DataType.STRING) {
+        if (dataSize < 0) {
+            if (dataType.isScalar()) {
+                dataSize = dataType.getPrimitiveSize();
+            } else if (dataType == DataType.STRING) {
                 final long pos = buffer.position();
                 dataSize = FastByteBuffer.SIZE_OF_INT + buffer.getInt(); // <(>string size -1> + <string byte data>
                 buffer.position(pos);
-            } else {
-                dataSize = dataType.getPrimitiveSize();
             }
         }
 
-        if (parent == null) {
-            parent = lastFieldHeader = new WireDataFieldDescription(null, fieldNameHashCode, fieldName, dataType, dataStartOffset, dataSize);
-        } else {
-            lastFieldHeader = new WireDataFieldDescription(parent, fieldNameHashCode, fieldName, dataType, dataStartOffset, dataSize);
+        if (dataType == DataType.END_MARKER && parent != null && parent.getParent() != null) {
+            parent = (WireDataFieldDescription) parent.getParent();
         }
+        lastFieldHeader = new WireDataFieldDescription(parent, fieldNameHashCode, fieldName, dataType, headerStart, dataStartOffset, dataSize);
+        if (dataType == DataType.START_MARKER) {
+            parent = lastFieldHeader;
+        }
+
         return lastFieldHeader;
     }
 
@@ -490,7 +485,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     @Override
     public <K, V> Map<K, V> getMap(final Map<K, V> map) {
         buffer.getArraySizeDescriptor();
-        final int nElements = buffer.getInt();
+        buffer.getInt();
         // convert into two linear arrays one of K and the other for V streamer encoding as
         // <1 (int)><n_map (int)><type K (byte)<type V (byte)> <Length, [K_0,...,K_length]> <Length, [V_0, ..., V_length]>
         final DataType keyDataType = getDataType(buffer.getByte());
@@ -584,22 +579,21 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         return buffer.isEnforceSimpleStringEncoding();
     }
 
-    /**
-     *
-     * @param state, {@code true} the ISO-8859-1 character encoding is being enforced for data fields (better performance), otherwise UTF-8 is being used (more generic encoding)
-     */
-    public void setEnforceSimpleStringEncoding(final boolean state) {
-        buffer.setEnforceSimpleStringEncoding(state);
+    @Override
+    public boolean isPutFieldMetaData() {
+        return putFieldMetaData;
     }
 
     @Override
-    public WireDataFieldDescription parseIoStream() {
-        final WireDataFieldDescription fieldRoot = new WireDataFieldDescription(null, "ROOT".hashCode(), "ROOT", DataType.OTHER, buffer.position(), -1);
-        final ProtocolInfo headerRoot = checkHeaderInfo();
-        headerRoot.setParent(fieldRoot);
+    public WireDataFieldDescription parseIoStream(final boolean readHeader) {
+        final WireDataFieldDescription fieldRoot = getRootElement();
+        parent = fieldRoot;
+        final WireDataFieldDescription headerRoot = readHeader ? checkHeaderInfo() : getFieldHeader();
         fieldRoot.getChildren().add(headerRoot);
+        buffer.position(headerRoot.getDataStartPosition());
 
         parseIoStream(headerRoot, 0);
+        updateDataEndMarker(fieldRoot);
         return fieldRoot;
     }
 
@@ -618,9 +612,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putBooleanArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -638,9 +631,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putByteArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -658,9 +650,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putCharArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -685,7 +676,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         buffer.putByte(getDataType(valueDataType)); // write value element type
         putGenericArrayAsPrimitive(valueDataType, values, 0, nElements);
 
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -704,7 +695,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
             return;
         }
         buffer.putDoubleArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -731,7 +722,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         buffer.putStringISO8859(typeList);
         buffer.putStringISO8859(enumeration.name());
         buffer.putInt(enumeration.ordinal());
-        updateDataEndMarker();
+
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -749,9 +741,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putFloatArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -769,9 +760,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putIntArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -789,9 +779,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putLongArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -812,7 +801,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         putGenericArrayAsPrimitive(keyDataType, keySet, 0, nElements);
         putGenericArrayAsPrimitive(valueDataType, valueSet, 0, nElements);
 
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -831,15 +820,15 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         buffer.putShortArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
     public void put(final String value) {
         buffer.ensureAdditionalCapacity((value == null ? 1 : value.length()) + 1);
         buffer.putString(value == null ? "" : value);
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
@@ -852,59 +841,65 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         if (arrayValue == null) {
             return;
         }
-        final int nElements = Math.min(getNumberOfElements(dims), arrayValue.length);
         final long addCapacity = Arrays.stream(arrayValue).map(s -> s.length() + 1).reduce(0, Integer::sum);
         buffer.ensureAdditionalCapacity(addCapacity);
         buffer.putStringArray(arrayValue, 0, dims);
-        updateDataEndMarker();
+        updateDataEndMarker(lastFieldHeader);
     }
 
     @Override
     public void putEndMarker(final String markerName) {
+        final WireDataFieldDescription oldParent = parent;
+        updateDataEndMarker(oldParent);
+        updateDataEndMarker(lastFieldHeader);
+        if (parent != null && parent.getParent() != null) {
+            parent = (WireDataFieldDescription) parent.getParent();
+        }
+
+        final long positionBeforeEndMarker = buffer.position();
         putFieldHeader(markerName, DataType.END_MARKER);
-        buffer.putByte(getDataType(DataType.END_MARKER));
     }
 
     @Override
-    public void putFieldHeader(final FieldDescription fieldDescription) {
+    public WireDataFieldDescription putFieldHeader(final FieldDescription fieldDescription) {
         final DataType dataType = fieldDescription.getDataType();
-        putFieldHeader(fieldDescription.getFieldName(), dataType, dataType.getPrimitiveSize());
+        return putFieldHeader(fieldDescription.getFieldName(), dataType);
     }
 
     @Override
-    public void putFieldHeader(final String fieldName, final DataType dataType) {
-        putFieldHeader(fieldName, dataType, 0);
-    }
-
-    @Override
-    public void putFieldHeader(final String fieldName, final DataType dataType, final int additionalSize) {
-        //        final long addCapacity = ((fieldName.length() + 1 + 4 + 1) * SIZE_OF_BYTE) + bufferIncrements
-        //                                 + dataType.getPrimitiveSize() + additionalSize;
-        //        buffer.ensureAdditionalCapacity(addCapacity);
+    public WireDataFieldDescription putFieldHeader(final String fieldName, final DataType dataType) {
+        final long addCapacity = ((fieldName.length() + 18) * FastByteBuffer.SIZE_OF_BYTE) + bufferIncrements + dataType.getPrimitiveSize();
+        buffer.ensureAdditionalCapacity(addCapacity);
+        final boolean isScalar = dataType.isScalar();
 
         // -- offset 0 vs. field start
-        buffer.putInt(fieldName.hashCode()); // unique hashCode identifier -- TODO: unify across C++/Java & optimise performance
-        final long fieldHeaderStart = buffer.position();
-        buffer.putInt(-1); // dataStart -- offset
-        fieldHeaderDataEndMarkerPosition = buffer.position();
-        buffer.putInt(-1); // dataSize (N.B. 'dataStart + dataSize' == start of next field header
+        final long headerStart = buffer.position();
         buffer.putByte(getDataType(dataType)); // data type ID
+        buffer.putInt(fieldName.hashCode()); // unique hashCode identifier -- TODO: unify across C++/Java & optimise performance
+        buffer.putInt(-1); // dataStart offset
+        final int dataSize = isScalar ? dataType.getPrimitiveSize() : -1;
+        buffer.putInt(dataSize); // dataSize (N.B. 'headerStart' + 'dataStart + dataSize' == start of next field header
         buffer.putStringISO8859(fieldName); // full field name
-        buffer.putString("a.u."); // field unit -- TODO: change to proper definiton
-        buffer.putString("field description"); // field description -- TODO: change to proper definiton
-        buffer.putString("field in/out direction"); // field direction -- TODO: change to proper definiton
-        buffer.putString("field groups"); // field direction -- TODO: change to proper definiton
-        // -- offset dataStart
-        fieldHeaderDataStart = buffer.position();
-        final long diff = fieldHeaderDataStart - fieldHeaderStart;
-        buffer.position(fieldHeaderStart);
-        buffer.putInt((int) diff); // write offset to dataStart
-        if (dataType.isScalar() && !dataType.equals(DataType.STRING)) {
-            final long nBytesToRead = dataType.getPrimitiveSize();
-            buffer.putInt((int) (nBytesToRead)); // write offset from dataStart to dataEnd
+
+        if (isPutFieldMetaData()) {
+            buffer.putString("a.u."); // field unit -- TODO: change to proper definiton
+            buffer.putString("field description"); // field description -- TODO: change to proper definiton
+            buffer.putString("field in/out direction"); // field direction -- TODO: change to proper definiton
+            buffer.putString("field groups"); // field direction -- TODO: change to proper definiton
         }
+
+        // -- offset dataStart calculations
+        final long fieldHeaderDataStart = buffer.position();
+        final int dataStartOffset = (int) (fieldHeaderDataStart - headerStart);
+        buffer.position(headerStart + 5);
+        buffer.putInt(dataStartOffset); // write offset to dataStart
         buffer.position(fieldHeaderDataStart);
+
         // from hereon there are data specific structures
+        buffer.ensureAdditionalCapacity(16); // allocate 16 bytes to account for potential array header (safe-bet)
+
+        lastFieldHeader = new WireDataFieldDescription(parent, fieldName.hashCode(), fieldName, dataType, headerStart, dataStartOffset, dataSize);
+        return lastFieldHeader;
     }
 
     public void putGenericArrayAsPrimitive(final DataType dataType, final Object[] data, final int offset, final int nToCopy) {
@@ -946,20 +941,66 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
     @Override
     public void putHeaderInfo() {
-        final long addCapacity = 20 + "OBJ_ROOT_START".length() + "#file producer : ".length() + BinarySerialiser.class.getCanonicalName().length();
+        parent = getRootElement();
+        final int addCapacity = 20 + "OBJ_ROOT_START".length() + "#file producer : ".length() + BinarySerialiser.class.getCanonicalName().length();
         buffer.ensureAdditionalCapacity(addCapacity);
-        putStartMarker("OBJ_ROOT_START");
+        buffer.putInt(VERSION_MAGIC_NUMBER);
         buffer.putStringISO8859(BinarySerialiser.class.getCanonicalName());
         buffer.putByte(VERSION_MAJOR);
         buffer.putByte(VERSION_MINOR);
         buffer.putByte(VERSION_MICRO);
-        updateDataEndMarker();
+        putStartMarker("OBJ_ROOT_START");
     }
 
     @Override
     public void putStartMarker(final String markerName) {
+        if (parent == null) {
+            parent = lastFieldHeader = getRootElement();
+        }
         putFieldHeader(markerName, DataType.START_MARKER);
-        buffer.putByte(getDataType(DataType.START_MARKER));
+        parent = lastFieldHeader;
+    }
+
+    public void setBuffer(final IoBuffer buffer) {
+        this.buffer = buffer;
+    }
+
+    public void setBufferIncrements(final int bufferIncrements) {
+        AssertUtils.gtEqThanZero("bufferIncrements", bufferIncrements);
+        this.bufferIncrements = bufferIncrements;
+    }
+
+    /**
+     *
+     * @param state, {@code true} the ISO-8859-1 character encoding is being enforced for data fields (better performance), otherwise UTF-8 is being used (more generic encoding)
+     */
+    public void setEnforceSimpleStringEncoding(final boolean state) {
+        buffer.setEnforceSimpleStringEncoding(state);
+    }
+
+    @Override
+    public void setPutFieldMetaData(final boolean putFieldMetaData) {
+        this.putFieldMetaData = putFieldMetaData;
+    }
+
+    @Override
+    public WireDataFieldDescription updateDataEndMarker(final WireDataFieldDescription fieldHeader, final int... offset) {
+        final WireDataFieldDescription localFieldHeader = fieldHeader == null ? lastFieldHeader : fieldHeader;
+        final long sizeMarkerEnd = buffer.position();
+        if (sizeMarkerEnd >= buffer.capacity()) {
+            throw new IllegalStateException("buffer position " + sizeMarkerEnd + " is beyond buffer capacity " + buffer.capacity());
+        }
+
+        final long headerStart = localFieldHeader.getFieldStart();
+        final long dataStart = headerStart + localFieldHeader.getDataStartOffset();
+        final int fieldOffset = offset.length == 0 ? 0 : offset[0];
+        final int dataSize = (int) (sizeMarkerEnd - dataStart) - fieldOffset;
+        localFieldHeader.setDataSize(dataSize);
+
+        buffer.position(headerStart + 9); // 9 bytes = 1 byte for dataType, 4 bytes for fieldNameHashCode, 4 bytes for dataOffset
+        buffer.putInt(dataSize);
+        buffer.position(sizeMarkerEnd);
+        return localFieldHeader;
     }
 
     protected Object[] getGenericArrayAsBoxedPrimitive(final DataType dataType) {
@@ -1013,53 +1054,32 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         return ret;
     }
 
-    protected void parseIoStream(final WireDataFieldDescription fieldRoot, final int recursionDepth) {
+    public void parseIoStream(final WireDataFieldDescription fieldRoot, final int recursionDepth) {
+        if (fieldRoot.getParent() == null) {
+            parent = lastFieldHeader = fieldRoot;
+        }
         WireDataFieldDescription field;
         while ((field = getFieldHeader()) != null) {
-            final long bytesToSkip = field.getDataSize();
-            final long skipPosition = field.getDataStartOffset() + bytesToSkip;
-            field.setParent(fieldRoot);
+            final long dataSize = field.getDataSize();
+            final long skipPosition = field.getDataStartPosition() + dataSize;
 
-            // reached end of (sub-)class - check marker value and close nested hierarchy
             if (field.getDataType() == DataType.END_MARKER) {
-                // reached end of (sub-)class - check marker value and close nested hierarchy
-                final byte markerValue = buffer.getByte();
-                final FieldDescription superParent = fieldRoot.getParent();
-                if (getDataType(DataType.END_MARKER) != markerValue) {
-                    throw new IllegalStateException("reached end marker, mismatched value '" + markerValue + "' vs. should '" + getDataType(DataType.END_MARKER) + "'");
-                }
-
-                if (superParent == null) {
-                    fieldRoot.getChildren().add(field);
-                } else {
-                    superParent.getChildren().add(field);
-                }
+                // reached end of (sub-)class - close nested hierarchy
                 break;
             }
 
-            fieldRoot.getChildren().add(field);
+            if (field.getDataType() == DataType.START_MARKER) {
+                // detected sub-class start marker
+                parseIoStream(field, recursionDepth + 1);
+                continue;
+            }
 
-            if (bytesToSkip < 0) {
-                LOGGER.atWarn().addArgument(field.getFieldName()).addArgument(field.getDataType()).addArgument(bytesToSkip).log("WireDataFieldDescription for '{}' type '{}' has bytesToSkip '{} <= 0'");
-
-                // fall-back option in case of
+            if (dataSize < 0) {
+                LOGGER.atWarn().addArgument(field.getFieldName()).addArgument(field.getDataType()).addArgument(dataSize).log("WireDataFieldDescription for '{}' type '{}' has bytesToSkip '{} <= 0'");
+                // fall-back option in case of undefined dataSetSize -- usually indicated an internal serialiser error
                 swallowRest(field);
             } else {
                 buffer.position(skipPosition);
-            }
-
-            // detected sub-class start marker
-            // check marker value
-            if (field.getDataType() == DataType.START_MARKER) {
-                buffer.position(field.getDataStartOffset());
-                // detected sub-class start marker
-                // check marker value
-                final byte markerValue = buffer.getByte();
-                if (getDataType(DataType.START_MARKER) != markerValue) {
-                    throw new IllegalStateException("reached start marker, mismatched value '" + markerValue + "' vs. should '" + getDataType(DataType.START_MARKER) + "'");
-                }
-
-                parseIoStream(field, recursionDepth + 1);
             }
         }
     }
@@ -1169,5 +1189,9 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
 
         throw new IllegalArgumentException("DataType byteValue=" + byteValue + " rawByteValue=" + (byteValue & 0xFF) + " not mapped");
+    }
+
+    private WireDataFieldDescription getRootElement() {
+        return new WireDataFieldDescription(null, "ROOT".hashCode(), "ROOT", DataType.OTHER, buffer.position(), -1, -1);
     }
 }
