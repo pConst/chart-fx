@@ -1,13 +1,18 @@
 package de.gsi.dataset.serializer.spi.iobuffer;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static de.gsi.dataset.DataSet.DIM_X;
 import static de.gsi.dataset.DataSet.DIM_Y;
 
 import java.lang.reflect.InvocationTargetException;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -15,6 +20,7 @@ import de.gsi.dataset.DataSet;
 import de.gsi.dataset.DataSet2D;
 import de.gsi.dataset.DataSetError;
 import de.gsi.dataset.DataSetMetaData;
+import de.gsi.dataset.serializer.DataType;
 import de.gsi.dataset.serializer.IoBuffer;
 import de.gsi.dataset.serializer.spi.BinarySerialiser;
 import de.gsi.dataset.serializer.spi.ByteBuffer;
@@ -81,6 +87,46 @@ class DataSetSerialiserTests {
         final DefaultErrorDataSet restored = (DefaultErrorDataSet) ioSerialiser.readDataSetFromByteArray();
 
         assertEquals(new DefaultErrorDataSet(original), new DefaultErrorDataSet(restored));
+    }
+
+    @DisplayName("test getDoubleArray([boolean[], byte[], ..., String[]) helper method")
+    @ParameterizedTest(name = "IoBuffer class - {0}")
+    @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
+    void testGetDoubleArrayHelper(final Class<? extends IoBuffer> bufferClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+        assertNotNull(bufferClass, "bufferClass being not null");
+        assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
+        final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(2 * BUFFER_SIZE); // a bit larger buffer since we test more cases at once
+        final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer);
+
+        putGenericTestArrays(ioSerialiser);
+
+        buffer.reset();
+
+        // test conversion to double array
+        ioSerialiser.checkHeaderInfo();
+        assertThrows(IllegalArgumentException.class, () -> DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.OTHER));
+        assertArrayEquals(new double[] { 1.0, 0.0, 1.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.BOOL_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.BYTE_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.CHAR_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.SHORT_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.INT_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.LONG_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.FLOAT_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.DOUBLE_ARRAY));
+        assertArrayEquals(new double[] { 1.0, 0.0, 2.0 }, DataSetSerialiser.getDoubleArray(ioSerialiser, DataType.STRING_ARRAY));
+    }
+
+    private static void putGenericTestArrays(final BinarySerialiser ioSerialiser) {
+        ioSerialiser.putHeaderInfo();
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.BOOL, new Boolean[] { true, false, true }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.BYTE, new Byte[] { (byte) 1, (byte) 0, (byte) 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.CHAR, new Character[] { (char) 1, (char) 0, (char) 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.SHORT, new Short[] { (short) 1, (short) 0, (short) 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.INT, new Integer[] { 1, 0, 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.LONG, new Long[] { 1L, 0L, 2L }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.FLOAT, new Float[] { (float) 1, (float) 0, (float) 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.DOUBLE, new Double[] { (double) 1, (double) 0, (double) 2 }, 0, 3);
+        ioSerialiser.putGenericArrayAsPrimitive(DataType.STRING, new String[] { "1.0", "0.0", "2.0" }, 0, 3);
     }
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
@@ -255,6 +301,15 @@ class DataSetSerialiserTests {
         original.getInfoList().clear();
 
         assertEquals(originalNoMetaData, restored);
+    }
+
+    @Test
+    void testMiscellaneous() {
+        assertEquals(0, DataSetSerialiser.getDimIndex("axis0", "axis"));
+        assertDoesNotThrow(() -> DataSetSerialiser.getDimIndex("axi0", "axis"));
+        assertEquals(-1, DataSetSerialiser.getDimIndex("axi0", "axis"));
+        assertDoesNotThrow(() -> DataSetSerialiser.getDimIndex("axis0.1", "axis"));
+        assertEquals(-1, DataSetSerialiser.getDimIndex("axis0.1", "axis"));
     }
 
     private static void addMetaData(final AbstractDataSet<?> dataSet, final boolean addLabelsStyles) {

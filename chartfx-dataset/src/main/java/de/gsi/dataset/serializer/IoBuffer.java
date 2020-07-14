@@ -34,6 +34,8 @@ public interface IoBuffer extends IoBufferHeader {
 
     byte[] getByteArray(final byte[] dst, final long offset, final int length);
 
+    Runnable getCallBackFunction();
+
     char getChar();
 
     default char[] getCharArray() {
@@ -125,16 +127,15 @@ public interface IoBuffer extends IoBufferHeader {
      */
     boolean isEnforceSimpleStringEncoding();
 
-    /**
-     * @param state, {@code true} the ISO-8859-1 character encoding is being enforced for data fields (better performance), otherwise UTF-8 is being used (more generic encoding)
-     */
-    void setEnforceSimpleStringEncoding(boolean state);
-
     int putArraySizeDescriptor(int n);
 
     int putArraySizeDescriptor(int[] dims);
 
     void putBoolean(boolean value);
+
+    default void putBooleanArray(final boolean[] src) {
+        putBooleanArray(src, 0, src == null ? -1 : src.length);
+    }
 
     void putBooleanArray(final boolean[] src, final long offset, final int n);
 
@@ -142,11 +143,19 @@ public interface IoBuffer extends IoBufferHeader {
 
     void putByte(final byte b);
 
+    default void putByteArray(final byte[] src) {
+        putByteArray(src, 0, src == null ? -1 : src.length);
+    }
+
     void putByteArray(final byte[] src, final long offset, final int n);
 
     void putByteArray(final byte[] src, final long offset, final int[] dims);
 
     void putChar(char value);
+
+    default void putCharArray(final char[] src) {
+        putCharArray(src, 0, src == null ? -1 : src.length);
+    }
 
     void putCharArray(final char[] src, final long offset, final int n);
 
@@ -154,11 +163,21 @@ public interface IoBuffer extends IoBufferHeader {
 
     void putDouble(double value);
 
+    default void putDoubleArray(final double[] src) {
+        putDoubleArray(src, 0, src == null ? -1 : src.length);
+    }
+
     void putDoubleArray(final double[] src, final long offset, final int n);
 
     void putDoubleArray(final double[] src, final long offset, final int[] dims);
 
+    void putEndMarker(String markerName);
+
     void putFloat(float value);
+
+    default void putFloatArray(final float[] src) {
+        putFloatArray(src, 0, src == null ? -1 : src.length);
+    }
 
     void putFloatArray(final float[] src, final long offset, final int n);
 
@@ -166,11 +185,19 @@ public interface IoBuffer extends IoBufferHeader {
 
     void putInt(int value);
 
+    default void putIntArray(final int[] src) {
+        putIntArray(src, 0, src == null ? -1 : src.length);
+    }
+
     void putIntArray(final int[] src, final long offset, final int n);
 
     void putIntArray(final int[] src, final long offset, final int[] dims);
 
     void putLong(long value);
+
+    default void putLongArray(final long[] src) {
+        putLongArray(src, 0, src == null ? -1 : src.length);
+    }
 
     void putLongArray(final long[] src, final long offset, final int n);
 
@@ -178,15 +205,32 @@ public interface IoBuffer extends IoBufferHeader {
 
     void putShort(short value); // NOPMD
 
+    default void putShortArray(final short[] src) { // NOPMD
+        putShortArray(src, 0, src == null ? -1 : src.length);
+    }
+
     void putShortArray(final short[] src, final long offset, final int n); // NOPMD
 
     void putShortArray(final short[] src, final long offset, final int[] dims); // NOPMD
 
+    void putStartMarker(String markerName);
+
     void putString(String string);
+
+    default void putStringArray(final String[] src) {
+        putStringArray(src, 0, src == null ? -1 : src.length);
+    }
 
     void putStringArray(final String[] src, final long offset, final int n); // NOPMD
 
     void putStringArray(final String[] src, final long offset, final int[] dims); // NOPMD
 
     void putStringISO8859(String string);
+
+    void setCallBackFunction(final Runnable runnable);
+
+    /**
+     * @param state, {@code true} the ISO-8859-1 character encoding is being enforced for data fields (better performance), otherwise UTF-8 is being used (more generic encoding)
+     */
+    void setEnforceSimpleStringEncoding(boolean state);
 }

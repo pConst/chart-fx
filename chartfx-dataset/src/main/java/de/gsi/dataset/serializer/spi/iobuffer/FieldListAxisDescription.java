@@ -33,10 +33,10 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
         final int nElements = ioSerialiser.getBuffer().getInt(); // number of elements
 
         for (int i = 0; i < nElements; i++) {
-            String axisName = ioSerialiser.getString();
-            String axisUnit = ioSerialiser.getString();
-            double min = ioSerialiser.getDouble();
-            double max = ioSerialiser.getDouble();
+            String axisName = ioSerialiser.getBuffer().getString();
+            String axisUnit = ioSerialiser.getBuffer().getString();
+            double min = ioSerialiser.getBuffer().getDouble();
+            double max = ioSerialiser.getBuffer().getDouble();
             DefaultAxisDescription ad = new DefaultAxisDescription(i, axisName, axisUnit, min, max); // NOPMD
             // N.B. PMD - unavoidable in-loop instantiation
             setVal.add(ad);
@@ -55,10 +55,10 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
         ioSerialiser.getBuffer().ensureAdditionalCapacity((nElements * entrySize) + 9L);
         ioSerialiser.getBuffer().putInt(nElements); // number of elements
         for (AxisDescription axis : axisDescriptions) {
-            ioSerialiser.put(axis.getName());
-            ioSerialiser.put(axis.getUnit());
-            ioSerialiser.put(axis.getMin());
-            ioSerialiser.put(axis.getMax());
+            ioSerialiser.getBuffer().putString(axis.getName());
+            ioSerialiser.getBuffer().putString(axis.getUnit());
+            ioSerialiser.getBuffer().putDouble(axis.getMin());
+            ioSerialiser.getBuffer().putDouble(axis.getMax());
         }
         ioSerialiser.updateDataEndMarker(null);
     }

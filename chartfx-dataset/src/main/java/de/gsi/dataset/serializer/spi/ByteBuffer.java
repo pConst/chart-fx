@@ -22,6 +22,7 @@ public class ByteBuffer implements IoBuffer {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final java.nio.ByteBuffer nioByteBuffer;
     private boolean enforceSimpleStringEncoding = false;
+    private Runnable callBackFunction;
 
     /**
      * construct new java.nio.ByteBuffer-based ByteBuffer with DEFAULT_INITIAL_CAPACITY
@@ -107,6 +108,11 @@ public class ByteBuffer implements IoBuffer {
         final byte[] ret = dst == null ? new byte[bytesToCopy + (int) offset] : dst;
         nioByteBuffer.get(ret, (int) offset, bytesToCopy);
         return ret;
+    }
+
+    @Override
+    public Runnable getCallBackFunction() {
+        return callBackFunction;
     }
 
     @Override
@@ -264,11 +270,6 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void setEnforceSimpleStringEncoding(final boolean state) {
-        this.enforceSimpleStringEncoding = state;
-    }
-
-    @Override
     public boolean isReadOnly() {
         return nioByteBuffer.isReadOnly();
     }
@@ -331,6 +332,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             putBoolean(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -341,6 +343,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             putBoolean(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -353,6 +356,7 @@ public class ByteBuffer implements IoBuffer {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
         ensureAdditionalCapacity(nElements);
         nioByteBuffer.put(src, (int) offset, nElements);
+        callBackFunction();
     }
 
     @Override
@@ -360,6 +364,7 @@ public class ByteBuffer implements IoBuffer {
         final int nElements = putArraySizeDescriptor(dims);
         ensureAdditionalCapacity(nElements);
         nioByteBuffer.put(src, (int) offset, nElements);
+        callBackFunction();
     }
 
     @Override
@@ -375,6 +380,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putChar(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -385,6 +391,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putChar(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -400,6 +407,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putDouble(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -410,6 +418,12 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putDouble(src[i + (int) offset]);
         }
+        callBackFunction();
+    }
+
+    @Override
+    public void putEndMarker(final String markerName) {
+        // empty implementation
     }
 
     @Override
@@ -425,6 +439,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putFloat(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -435,6 +450,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putFloat(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -450,6 +466,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putInt(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -460,6 +477,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putInt(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -475,6 +493,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putLong(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -485,6 +504,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putLong(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -500,6 +520,7 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putShort(src[i + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -510,6 +531,12 @@ public class ByteBuffer implements IoBuffer {
         for (int i = (int) offset; i < end; i++) {
             nioByteBuffer.putShort(src[i + (int) offset]);
         }
+        callBackFunction();
+    }
+
+    @Override
+    public void putStartMarker(final String markerName) {
+        // empty implementation
     }
 
     @Override
@@ -522,6 +549,7 @@ public class ByteBuffer implements IoBuffer {
         if (string == null) {
             putInt(1); // for C++ zero terminated string$
             putByte((byte) 0); // For C++ zero terminated string
+            callBackFunction();
             return;
         }
 
@@ -530,6 +558,7 @@ public class ByteBuffer implements IoBuffer {
         ensureAdditionalCapacity(bytes.length + 1L);
         nioByteBuffer.put(bytes, 0, bytes.length);
         putByte((byte) 0); // For C++ zero terminated string
+        callBackFunction();
     }
 
     @Override
@@ -539,11 +568,13 @@ public class ByteBuffer implements IoBuffer {
             for (int k = 0; k < nElements; k++) {
                 putStringISO8859(src[k + (int) offset]);
             }
+            callBackFunction();
             return;
         }
         for (int k = 0; k < nElements; k++) {
             putString(src[k + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -553,11 +584,13 @@ public class ByteBuffer implements IoBuffer {
             for (int k = 0; k < nElements; k++) {
                 putStringISO8859(src[k + (int) offset]);
             }
+            callBackFunction();
             return;
         }
         for (int k = 0; k < nElements; k++) {
             putString(src[k + (int) offset]);
         }
+        callBackFunction();
     }
 
     @Override
@@ -568,6 +601,7 @@ public class ByteBuffer implements IoBuffer {
             putByte((byte) (string.charAt(i) & 0xFF)); // ISO-8859-1 encoding
         }
         putByte((byte) 0); // For C++ zero terminated string
+        callBackFunction();
     }
 
     @Override
@@ -582,6 +616,16 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
+    public void setCallBackFunction(final Runnable runnable) {
+        callBackFunction = runnable;
+    }
+
+    @Override
+    public void setEnforceSimpleStringEncoding(final boolean state) {
+        this.enforceSimpleStringEncoding = state;
+    }
+
+    @Override
     public void trim() {
         /* not implemented */
     }
@@ -589,5 +633,11 @@ public class ByteBuffer implements IoBuffer {
     @Override
     public void trim(final int requestedCapacity) {
         /* not implemented */
+    }
+
+    private void callBackFunction() {
+        if (callBackFunction != null) {
+            callBackFunction.run();
+        }
     }
 }

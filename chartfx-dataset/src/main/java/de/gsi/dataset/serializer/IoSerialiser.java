@@ -6,11 +6,12 @@ import de.gsi.dataset.serializer.spi.ProtocolInfo;
 import de.gsi.dataset.serializer.spi.WireDataFieldDescription;
 
 public interface IoSerialiser {
+    /**
+     * Reads and checks protocol header information.
+     * @return ProtocolInfo info Object (extends FieldHeader)
+     * @throws IllegalStateException in case the format is incompatible with this serialiser
+     */
     ProtocolInfo checkHeaderInfo();
-
-    boolean getBoolean();
-
-    boolean[] getBooleanArray();
 
     boolean isPutFieldMetaData();
 
@@ -20,21 +21,7 @@ public interface IoSerialiser {
 
     void setBuffer(final IoBuffer buffer);
 
-    byte getByte();
-
-    byte[] getByteArray();
-
-    char[] getCharArray();
-
-    char getCharacter();
-
     <E> Collection<E> getCollection(Collection<E> collection);
-
-    double getDouble();
-
-    double[] getDoubleArray();
-
-    double[] getDoubleArray(DataType dataType);
 
     <E extends Enum<E>> Enum<E> getEnum(Enum<E> enumeration);
 
@@ -42,19 +29,7 @@ public interface IoSerialiser {
 
     WireDataFieldDescription getFieldHeader();
 
-    float getFloat();
-
-    float[] getFloatArray();
-
-    int[] getIntArray();
-
-    int getInteger();
-
     <E> List<E> getList(List<E> collection);
-
-    long getLong();
-
-    long[] getLongArray();
 
     <K, V> Map<K, V> getMap(Map<K, V> map);
 
@@ -62,76 +37,13 @@ public interface IoSerialiser {
 
     <E> Set<E> getSet(Set<E> collection);
 
-    short getShort();
-
-    short[] getShortArray();
-
-    String getString();
-
-    String[] getStringArray();
-
     WireDataFieldDescription parseIoStream(final boolean readHeader);
-
-    void put(boolean value);
-
-    void put(boolean[] arrayValue);
-
-    void put(boolean[] arrayValue, int[] dims);
-
-    void put(byte value);
-
-    void put(byte[] arrayValue);
-
-    void put(byte[] arrayValue, int[] dims);
-
-    void put(char value);
-
-    void put(char[] arrayValue);
-
-    void put(char[] arrayValue, int[] dims);
 
     <E> void put(Collection<E> collection);
 
-    void put(double value);
-
-    void put(double[] arrayValue);
-
-    void put(double[] arrayValue, int[] dims);
-
     void put(Enum<?> enumeration);
 
-    void put(float value);
-
-    void put(float[] arrayValue);
-
-    void put(float[] arrayValue, int[] dims);
-
-    void put(int value);
-
-    void put(int[] arrayValue);
-
-    void put(int[] arrayValue, int[] dims);
-
-    void put(long value);
-
-    void put(long[] arrayValue);
-
-    void put(long[] arrayValue, int[] dims);
-
     <K, V> void put(Map<K, V> map);
-
-    void put(short value);
-
-    void put(short[] arrayValue);
-
-    void put(short[] arrayValue, // NOPMD
-            int[] dims);
-
-    void put(String value);
-
-    void put(String[] arrayValue);
-
-    void put(String[] arrayValue, int[] dims);
 
     void putEndMarker(String markerName);
 
@@ -146,5 +58,5 @@ public interface IoSerialiser {
 
     void putStartMarker(String markerName);
 
-    WireDataFieldDescription updateDataEndMarker(WireDataFieldDescription fieldHeader, int... offset);
+    void updateDataEndMarker(WireDataFieldDescription fieldHeader, int... offset);
 }

@@ -22,47 +22,47 @@ public final class FieldPrimitiveValueHelper {
     public static void register(final AbstractSerialiser serialiser, final IoSerialiser ioSerialiser) {
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setBoolean(obj, ioSerialiser.getBuffer().getBoolean()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getBoolean(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putBoolean(field.getField().getBoolean(obj)), // writer
                 boolean.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setByte(obj, ioSerialiser.getBuffer().getByte()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getByte(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putByte(field.getField().getByte(obj)), // writer
                 byte.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setChar(obj, ioSerialiser.getBuffer().getChar()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getChar(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putChar(field.getField().getChar(obj)), // writer
                 char.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setShort(obj, ioSerialiser.getBuffer().getShort()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getShort(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putShort(field.getField().getShort(obj)), // writer
                 short.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setInt(obj, ioSerialiser.getBuffer().getInt()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getInt(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putInt(field.getField().getInt(obj)), // writer
                 int.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setLong(obj, ioSerialiser.getBuffer().getLong()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getLong(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putLong(field.getField().getLong(obj)), // writer
                 long.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setFloat(obj, ioSerialiser.getBuffer().getFloat()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getFloat(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putFloat(field.getField().getFloat(obj)), // writer
                 float.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
                 (obj, field) -> field.getField().setDouble(obj, ioSerialiser.getBuffer().getDouble()), // reader
-                (obj, field) -> ioSerialiser.put(field.getField().getDouble(obj)), // writer
+                (obj, field) -> ioSerialiser.getBuffer().putDouble(field.getField().getDouble(obj)), // writer
                 double.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioSerialiser, //
-                (obj, field) -> field.getField().set(obj, ioSerialiser.getString()), // reader
-                (obj, field) -> ioSerialiser.put((String) field.getField().get(obj)), // writer
+                (obj, field) -> field.getField().set(obj, ioSerialiser.getBuffer().getString()), // reader
+                (obj, field) -> ioSerialiser.getBuffer().putString((String) field.getField().get(obj)), // writer
                 String.class));
     }
 }

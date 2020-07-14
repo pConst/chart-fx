@@ -20,16 +20,16 @@ public final class FieldDataSetHelper {
     public static void register(final AbstractSerialiser serialiser, final IoSerialiser ioBuffer) {
         // DoubleArrayList serialiser mapper to IoBuffer
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioBuffer, //
-                (obj, field) -> field.getField().set(obj, DoubleArrayList.wrap(ioBuffer.getDoubleArray())), // reader
+                (obj, field) -> field.getField().set(obj, DoubleArrayList.wrap(ioBuffer.getBuffer().getDoubleArray())), // reader
                 (obj, field) -> {
                     final DoubleArrayList retVal = (DoubleArrayList) field.getField().get(obj);
-                    ioBuffer.put(retVal.elements(), new int[] { retVal.size() });
+                    ioBuffer.getBuffer().putDoubleArray(retVal.elements(), 0, retVal.size());
                 }, // writer
                 DoubleArrayList.class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioBuffer, //
                 (obj, field) -> {
-                    final String dataSetType = ioBuffer.getString();
+                    final String dataSetType = ioBuffer.getBuffer().getString();
                     if (!DataSet.class.getName().equals(dataSetType)) {
                         throw new IllegalArgumentException("unknown DataSet type = " + dataSetType);
                     }

@@ -109,7 +109,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     public static final byte VERSION_MINOR = 0;
     public static final byte VERSION_MICRO = 0;
     private static final Logger LOGGER = LoggerFactory.getLogger(BinarySerialiser.class);
-    private static final String READ_POSITION_AT_BUFFER_END = "read position at buffer end";
     private static final DataType[] byteToDataType = new DataType[256];
     private static final Byte[] dataTypeToByte = new Byte[256];
     static {
@@ -160,6 +159,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     private boolean putFieldMetaData;
     private WireDataFieldDescription parent;
     private WireDataFieldDescription lastFieldHeader;
+    private final Runnable callBackFunction = () -> updateDataEndMarker(lastFieldHeader);
 
     /**
      * @param buffer the backing IoBuffer (see e.g. {@link de.gsi.dataset.serializer.spi.FastByteBuffer} or{@link de.gsi.dataset.serializer.spi.ByteBuffer}
@@ -167,6 +167,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     public BinarySerialiser(final IoBuffer buffer) {
         super();
         this.buffer = buffer;
+        this.buffer.setCallBackFunction(callBackFunction);
     }
 
     @Override
@@ -190,57 +191,12 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         return header;
     }
 
-    @Override
-    public boolean getBoolean() {
-        if (buffer.hasRemaining()) {
-            return buffer.getBoolean();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public boolean[] getBooleanArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getBooleanArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
     public IoBuffer getBuffer() {
         return buffer;
     }
 
     public int getBufferIncrements() {
         return bufferIncrements;
-    }
-
-    @Override
-    public byte getByte() {
-        if (buffer.hasRemaining()) {
-            return buffer.getByte();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public byte[] getByteArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getByteArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public char[] getCharArray() {
-        return buffer.getCharArray();
-    }
-
-    @Override
-    public char getCharacter() {
-        if (buffer.hasRemaining()) {
-            return buffer.getChar();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
     }
 
     @Override
@@ -260,48 +216,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
 
         return retCollection;
-    }
-
-    @Override
-    public double getDouble() {
-        if (buffer.hasRemaining()) {
-            return buffer.getDouble();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public double[] getDoubleArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getDoubleArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public double[] getDoubleArray(final DataType dataType) {
-        switch (dataType) {
-        case BOOL_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getBooleanArray());
-        case BYTE_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getByteArray());
-        case SHORT_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getShortArray());
-        case INT_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getIntArray());
-        case LONG_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getLongArray());
-        case FLOAT_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getFloatArray());
-        case DOUBLE_ARRAY:
-            return getDoubleArray();
-        case CHAR_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getCharArray());
-        case STRING_ARRAY:
-            return GenericsHelper.toDoublePrimitive(getStringArray());
-        default:
-            throw new IllegalArgumentException("dataType '" + dataType + "' is not an array");
-        }
     }
 
     @Override
@@ -416,38 +330,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public float getFloat() {
-        if (buffer.hasRemaining()) {
-            return buffer.getFloat();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public float[] getFloatArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getFloatArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public int[] getIntArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getIntArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public int getInteger() {
-        if (buffer.hasRemaining()) {
-            return buffer.getInt();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
     public <E> List<E> getList(final List<E> collection) {
         buffer.getArraySizeDescriptor();
         final int nElements = buffer.getInt();
@@ -464,22 +346,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
 
         return retCollection;
-    }
-
-    @Override
-    public long getLong() {
-        if (buffer.hasRemaining()) {
-            return buffer.getLong();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public long[] getLongArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getLongArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
     }
 
     @Override
@@ -540,38 +406,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         return retCollection;
     }
 
-    @Override
-    public short getShort() { // NOPMD
-        if (buffer.hasRemaining()) {
-            return buffer.getShort();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public short[] getShortArray() { // NOPMD
-        if (buffer.hasRemaining()) {
-            return buffer.getShortArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public String getString() {
-        if (buffer.hasRemaining()) {
-            return buffer.getString();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
-    @Override
-    public String[] getStringArray() {
-        if (buffer.hasRemaining()) {
-            return buffer.getStringArray();
-        }
-        throw new IndexOutOfBoundsException(READ_POSITION_AT_BUFFER_END);
-    }
-
     /**
      * @return {@code true} the ISO-8859-1 character encoding is being enforced for data fields (better performance), otherwise UTF-8 is being used (more generic encoding)
      */
@@ -598,103 +432,17 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public void put(final boolean value) {
-        buffer.putBoolean(value);
-    }
-
-    @Override
-    public void put(final boolean[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final boolean[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putBooleanArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final byte value) {
-        buffer.putByte(value);
-    }
-
-    @Override
-    public void put(final byte[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final byte[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putByteArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final char value) {
-        buffer.putChar(value);
-    }
-
-    @Override
-    public void put(final char[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final char[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putCharArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
     public <E> void put(final Collection<E> collection) {
         final Object[] values = collection.toArray();
         final int nElements = collection.size();
         final DataType valueDataType = nElements == 0 ? DataType.OTHER : DataType.fromClassType(values[0].getClass());
         final int entrySize = 17; // as an initial estimate
-        final DataType dataType;
-        if (collection instanceof Queue) {
-            dataType = DataType.QUEUE;
-        } else if (collection instanceof List) {
-            dataType = DataType.LIST;
-        } else if (collection instanceof Set) {
-            dataType = DataType.SET;
-        } else {
-            dataType = DataType.COLLECTION;
-        }
 
         buffer.putArraySizeDescriptor(nElements);
         buffer.ensureAdditionalCapacity((nElements * entrySize) + 9);
         buffer.putByte(getDataType(valueDataType)); // write value element type
         putGenericArrayAsPrimitive(valueDataType, values, 0, nElements);
 
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final double value) {
-        buffer.putDouble(value);
-    }
-
-    @Override
-    public void put(final double[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final double[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putDoubleArray(arrayValue, 0, dims);
         updateDataEndMarker(lastFieldHeader);
     }
 
@@ -727,63 +475,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public void put(final float value) {
-        buffer.putFloat(value);
-    }
-
-    @Override
-    public void put(final float[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final float[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putFloatArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final int value) {
-        buffer.putInt(value);
-    }
-
-    @Override
-    public void put(final int[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final int[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putIntArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final long value) {
-        buffer.putLong(value);
-    }
-
-    @Override
-    public void put(final long[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final long[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putLongArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
     public <K, V> void put(final Map<K, V> map) {
         final Object[] keySet = map.keySet().toArray();
         final Object[] valueSet = map.values().toArray();
@@ -805,49 +496,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public void put(final short value) { // NOPMD
-        buffer.putShort(value);
-    }
-
-    @Override
-    public void put(final short[] arrayValue) { // NOPMD
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final short[] arrayValue, // NOPMD
-            final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        buffer.putShortArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final String value) {
-        buffer.ensureAdditionalCapacity((value == null ? 1 : value.length()) + 1);
-        buffer.putString(value == null ? "" : value);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
-    public void put(final String[] arrayValue) {
-        put(arrayValue, new int[] { arrayValue == null ? 0 : arrayValue.length });
-    }
-
-    @Override
-    public void put(final String[] arrayValue, final int[] dims) {
-        if (arrayValue == null) {
-            return;
-        }
-        final long addCapacity = Arrays.stream(arrayValue).map(s -> s.length() + 1).reduce(0, Integer::sum);
-        buffer.ensureAdditionalCapacity(addCapacity);
-        buffer.putStringArray(arrayValue, 0, dims);
-        updateDataEndMarker(lastFieldHeader);
-    }
-
-    @Override
     public void putEndMarker(final String markerName) {
         final WireDataFieldDescription oldParent = parent;
         updateDataEndMarker(oldParent);
@@ -856,8 +504,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
             parent = (WireDataFieldDescription) parent.getParent();
         }
 
-        final long positionBeforeEndMarker = buffer.position();
         putFieldHeader(markerName, DataType.END_MARKER);
+        buffer.putStartMarker(markerName);
     }
 
     @Override
@@ -869,6 +517,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     @Override
     public WireDataFieldDescription putFieldHeader(final String fieldName, final DataType dataType) {
         final long addCapacity = ((fieldName.length() + 18) * FastByteBuffer.SIZE_OF_BYTE) + bufferIncrements + dataType.getPrimitiveSize();
+        buffer.setCallBackFunction(null);
         buffer.ensureAdditionalCapacity(addCapacity);
         final boolean isScalar = dataType.isScalar();
 
@@ -894,6 +543,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         buffer.position(headerStart + 5);
         buffer.putInt(dataStartOffset); // write offset to dataStart
         buffer.position(fieldHeaderDataStart);
+        buffer.setCallBackFunction(callBackFunction);
 
         // from hereon there are data specific structures
         buffer.ensureAdditionalCapacity(16); // allocate 16 bytes to account for potential array header (safe-bet)
@@ -941,6 +591,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
     @Override
     public void putHeaderInfo() {
+        buffer.setCallBackFunction(null);
         parent = getRootElement();
         final int addCapacity = 20 + "OBJ_ROOT_START".length() + "#file producer : ".length() + BinarySerialiser.class.getCanonicalName().length();
         buffer.ensureAdditionalCapacity(addCapacity);
@@ -958,11 +609,13 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
             parent = lastFieldHeader = getRootElement();
         }
         putFieldHeader(markerName, DataType.START_MARKER);
+        buffer.putStartMarker(markerName);
         parent = lastFieldHeader;
     }
 
     public void setBuffer(final IoBuffer buffer) {
         this.buffer = buffer;
+        this.buffer.setCallBackFunction(callBackFunction);
     }
 
     public void setBufferIncrements(final int bufferIncrements) {
@@ -984,7 +637,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public WireDataFieldDescription updateDataEndMarker(final WireDataFieldDescription fieldHeader, final int... offset) {
+    public void updateDataEndMarker(final WireDataFieldDescription fieldHeader, final int... offset) {
         final WireDataFieldDescription localFieldHeader = fieldHeader == null ? lastFieldHeader : fieldHeader;
         final long sizeMarkerEnd = buffer.position();
         if (sizeMarkerEnd >= buffer.capacity()) {
@@ -1000,7 +653,6 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         buffer.position(headerStart + 9); // 9 bytes = 1 byte for dataType, 4 bytes for fieldNameHashCode, 4 bytes for dataOffset
         buffer.putInt(dataSize);
         buffer.position(sizeMarkerEnd);
-        return localFieldHeader;
     }
 
     protected Object[] getGenericArrayAsBoxedPrimitive(final DataType dataType) {
@@ -1093,52 +745,52 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         int size = -1;
         switch (fieldDescription.getDataType()) {
         case BOOL:
-            leftOver = getBoolean();
+            leftOver = buffer.getBoolean();
             break;
         case BYTE:
-            leftOver = getByte();
+            leftOver = buffer.getByte();
             break;
         case SHORT:
-            leftOver = getShort();
+            leftOver = buffer.getShort();
             break;
         case INT:
-            leftOver = getInteger();
+            leftOver = buffer.getInt();
             break;
         case LONG:
-            leftOver = getLong();
+            leftOver = buffer.getLong();
             break;
         case FLOAT:
-            leftOver = getFloat();
+            leftOver = buffer.getFloat();
             break;
         case DOUBLE:
-            leftOver = getDouble();
+            leftOver = buffer.getDouble();
             break;
         case STRING:
-            leftOver = getString();
+            leftOver = buffer.getString();
             break;
         case BOOL_ARRAY:
-            leftOver = getBooleanArray();
+            leftOver = buffer.getBooleanArray();
             break;
         case BYTE_ARRAY:
-            leftOver = getByteArray();
+            leftOver = buffer.getByteArray();
             break;
         case SHORT_ARRAY:
-            leftOver = getShortArray();
+            leftOver = buffer.getShortArray();
             break;
         case INT_ARRAY:
-            leftOver = getIntArray();
+            leftOver = buffer.getIntArray();
             break;
         case LONG_ARRAY:
-            leftOver = getLongArray();
+            leftOver = buffer.getLongArray();
             break;
         case FLOAT_ARRAY:
-            leftOver = getFloatArray();
+            leftOver = buffer.getFloatArray();
             break;
         case DOUBLE_ARRAY:
-            leftOver = getDoubleArray();
+            leftOver = buffer.getDoubleArray();
             break;
         case STRING_ARRAY:
-            leftOver = getStringArray();
+            leftOver = buffer.getStringArray();
             break;
         case COLLECTION:
             leftOver = getCollection(new ArrayList<>());
@@ -1161,7 +813,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         case START_MARKER:
         case END_MARKER:
             size = 1;
-            leftOver = getByte();
+            leftOver = null;
             break;
         default:
             throw new IllegalArgumentException("encountered unknown format for " + fieldDescription.toString());
