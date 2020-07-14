@@ -9,11 +9,11 @@ public interface FieldDescription {
 
     List<FieldDescription> getChildren();
 
-    long getDataSize();
+    int getDataSize();
 
-    long getDataStartOffset();
+    int getDataStartOffset();
 
-    long getDataStartPosition();
+    int getDataStartPosition();
 
     DataType getDataType();
 
@@ -21,11 +21,13 @@ public interface FieldDescription {
 
     String getFieldNameRelative();
 
-    long getFieldStart();
+    int getFieldStart();
 
     FieldDescription getParent();
 
     Class<?> getType();
+
+    int getFieldNameHashCode();
 
     void printFieldStructure();
 }

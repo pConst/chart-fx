@@ -10,14 +10,14 @@ import de.gsi.dataset.serializer.IoBuffer;
  * @author rstein
  */
 public class ByteBuffer implements IoBuffer {
-    public static final long SIZE_OF_BOOLEAN = 1;
-    public static final long SIZE_OF_BYTE = 1;
-    public static final long SIZE_OF_SHORT = 2;
-    public static final long SIZE_OF_CHAR = 2;
-    public static final long SIZE_OF_INT = 4;
-    public static final long SIZE_OF_LONG = 8;
-    public static final long SIZE_OF_FLOAT = 4;
-    public static final long SIZE_OF_DOUBLE = 8;
+    public static final int SIZE_OF_BOOLEAN = 1;
+    public static final int SIZE_OF_BYTE = 1;
+    public static final int SIZE_OF_SHORT = 2;
+    public static final int SIZE_OF_CHAR = 2;
+    public static final int SIZE_OF_INT = 4;
+    public static final int SIZE_OF_LONG = 8;
+    public static final int SIZE_OF_FLOAT = 4;
+    public static final int SIZE_OF_DOUBLE = 8;
     private static final int DEFAULT_INITIAL_CAPACITY = 1000;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final java.nio.ByteBuffer nioByteBuffer;
@@ -52,17 +52,17 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void ensureAdditionalCapacity(final long capacity) {
+    public void ensureAdditionalCapacity(final int capacity) {
         /* not implemented */
     }
 
     @Override
-    public void ensureCapacity(final long capacity) {
+    public void ensureCapacity(final int capacity) {
         /* not implemented */
     }
 
     @Override
-    public void forceCapacity(final long length, final long preserve) {
+    public void forceCapacity(final int length, final int preserve) {
         /* not implemented */
     }
 
@@ -82,14 +82,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public boolean[] getBooleanArray(final boolean[] dst, final long offset, final int length) {
+    public boolean[] getBooleanArray(final boolean[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final boolean[] ret = dst == null ? new boolean[arraySize + (int) offset] : dst;
+        final boolean[] ret = dst == null ? new boolean[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getBoolean();
         }
         return ret;
@@ -101,12 +101,12 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public byte[] getByteArray(final byte[] dst, final long offset, final int length) {
+    public byte[] getByteArray(final byte[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final byte[] ret = dst == null ? new byte[bytesToCopy + (int) offset] : dst;
-        nioByteBuffer.get(ret, (int) offset, bytesToCopy);
+        final byte[] ret = dst == null ? new byte[bytesToCopy + offset] : dst;
+        nioByteBuffer.get(ret, offset, bytesToCopy);
         return ret;
     }
 
@@ -121,14 +121,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public char[] getCharArray(final char[] dst, final long offset, final int length) {
+    public char[] getCharArray(final char[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final char[] ret = dst == null ? new char[arraySize + (int) offset] : dst;
+        final char[] ret = dst == null ? new char[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getChar();
         }
         return ret;
@@ -140,14 +140,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public double[] getDoubleArray(final double[] dst, final long offset, final int length) {
+    public double[] getDoubleArray(final double[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final double[] ret = dst == null ? new double[arraySize + (int) offset] : dst;
+        final double[] ret = dst == null ? new double[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getDouble();
         }
         return ret;
@@ -159,14 +159,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public float[] getFloatArray(final float[] dst, final long offset, final int length) {
+    public float[] getFloatArray(final float[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final float[] ret = dst == null ? new float[arraySize + (int) offset] : dst;
+        final float[] ret = dst == null ? new float[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getFloat();
         }
         return ret;
@@ -178,14 +178,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public int[] getIntArray(final int[] dst, final long offset, final int length) {
+    public int[] getIntArray(final int[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final int[] ret = dst == null ? new int[arraySize + (int) offset] : dst;
+        final int[] ret = dst == null ? new int[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getInt();
         }
         return ret;
@@ -197,14 +197,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public long[] getLongArray(final long[] dst, final long offset, final int length) {
+    public long[] getLongArray(final long[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final long[] ret = dst == null ? new long[arraySize + (int) offset] : dst;
+        final long[] ret = dst == null ? new long[arraySize + offset] : dst;
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getLong();
         }
         return ret;
@@ -216,14 +216,14 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public short[] getShortArray(final short[] dst, final long offset, final int length) { // NOPMD
+    public short[] getShortArray(final short[] dst, final int offset, final int length) { // NOPMD
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
-        final short[] ret = dst == null ? new short[arraySize + (int) offset] : dst; // NOPMD
+        final short[] ret = dst == null ? new short[arraySize + offset] : dst; // NOPMD
 
         final int bytesToCopy = (dst == null ? arraySize : Math.min(arraySize, length));
-        final int end = (int) offset + bytesToCopy;
-        for (int i = (int) offset; i < end; i++) {
+        final int end = offset + bytesToCopy;
+        for (int i = offset; i < end; i++) {
             ret[i] = getShort();
         }
         return ret;
@@ -239,13 +239,13 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public String[] getStringArray(final String[] dst, final long offset, final int length) {
+    public String[] getStringArray(final String[] dst, final int offset, final int length) {
         getArraySizeDescriptor();
         final int arraySize = getInt(); // strided-array size
         final String[] ret = dst == null ? new String[arraySize] : dst;
         final int size = dst == null ? arraySize : Math.min(arraySize, length);
         for (int k = 0; k < size; k++) {
-            ret[k + (int) offset] = getString();
+            ret[k + offset] = getString();
         }
         return ret;
     }
@@ -275,7 +275,7 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public long limit() {
+    public int limit() {
         return nioByteBuffer.limit();
     }
 
@@ -290,13 +290,13 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public long position() {
+    public int position() {
         return nioByteBuffer.position();
     }
 
     @Override
-    public void position(final long newPosition) {
-        nioByteBuffer.position((int) newPosition);
+    public void position(final int newPosition) {
+        nioByteBuffer.position(newPosition);
     }
 
     @Override
@@ -325,23 +325,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putBooleanArray(final boolean[] src, final long offset, final int n) {
+    public void putBooleanArray(final boolean[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements);
-        for (int i = (int) offset; i < end; i++) {
-            putBoolean(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            putBoolean(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putBooleanArray(final boolean[] src, final long offset, final int[] dims) {
+    public void putBooleanArray(final boolean[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements);
-        for (int i = (int) offset; i < end; i++) {
-            putBoolean(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            putBoolean(src[i + offset]);
         }
         callBackFunction();
     }
@@ -352,18 +352,18 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putByteArray(final byte[] src, final long offset, final int n) {
+    public void putByteArray(final byte[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
         ensureAdditionalCapacity(nElements);
-        nioByteBuffer.put(src, (int) offset, nElements);
+        nioByteBuffer.put(src, offset, nElements);
         callBackFunction();
     }
 
     @Override
-    public void putByteArray(final byte[] src, final long offset, final int[] dims) {
+    public void putByteArray(final byte[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
         ensureAdditionalCapacity(nElements);
-        nioByteBuffer.put(src, (int) offset, nElements);
+        nioByteBuffer.put(src, offset, nElements);
         callBackFunction();
     }
 
@@ -373,23 +373,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putCharArray(final char[] src, final long offset, final int n) {
+    public void putCharArray(final char[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_CHAR);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putChar(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putChar(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putCharArray(final char[] src, final long offset, final int[] dims) {
+    public void putCharArray(final char[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_CHAR);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putChar(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putChar(src[i + offset]);
         }
         callBackFunction();
     }
@@ -400,23 +400,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putDoubleArray(final double[] src, final long offset, final int n) {
+    public void putDoubleArray(final double[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_DOUBLE);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putDouble(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putDouble(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putDoubleArray(final double[] src, final long offset, final int[] dims) {
+    public void putDoubleArray(final double[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_DOUBLE);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putDouble(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putDouble(src[i + offset]);
         }
         callBackFunction();
     }
@@ -432,23 +432,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putFloatArray(final float[] src, final long offset, final int n) {
+    public void putFloatArray(final float[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_FLOAT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putFloat(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putFloat(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putFloatArray(final float[] src, final long offset, final int[] dims) {
+    public void putFloatArray(final float[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_FLOAT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putFloat(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putFloat(src[i + offset]);
         }
         callBackFunction();
     }
@@ -459,23 +459,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putIntArray(final int[] src, final long offset, final int n) {
+    public void putIntArray(final int[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_INT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putInt(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putInt(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putIntArray(final int[] src, final long offset, final int[] dims) {
+    public void putIntArray(final int[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_INT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putInt(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putInt(src[i + offset]);
         }
         callBackFunction();
     }
@@ -486,23 +486,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putLongArray(final long[] src, final long offset, final int n) {
+    public void putLongArray(final long[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_LONG);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putLong(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putLong(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putLongArray(final long[] src, final long offset, final int[] dims) {
+    public void putLongArray(final long[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_LONG);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putLong(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putLong(src[i + offset]);
         }
         callBackFunction();
     }
@@ -513,23 +513,23 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public void putShortArray(final short[] src, final long offset, final int n) { // NOPMD
+    public void putShortArray(final short[] src, final int offset, final int n) { // NOPMD
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_SHORT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putShort(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putShort(src[i + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putShortArray(final short[] src, final long offset, final int[] dims) { // NOPMD
+    public void putShortArray(final short[] src, final int offset, final int[] dims) { // NOPMD
         final int nElements = putArraySizeDescriptor(dims);
-        final int end = (int) offset + nElements;
+        final int end = offset + nElements;
         ensureAdditionalCapacity(nElements * SIZE_OF_SHORT);
-        for (int i = (int) offset; i < end; i++) {
-            nioByteBuffer.putShort(src[i + (int) offset]);
+        for (int i = offset; i < end; i++) {
+            nioByteBuffer.putShort(src[i + offset]);
         }
         callBackFunction();
     }
@@ -555,40 +555,40 @@ public class ByteBuffer implements IoBuffer {
 
         final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
         putInt(bytes.length + 1); // for C++ zero terminated string$
-        ensureAdditionalCapacity(bytes.length + 1L);
+        ensureAdditionalCapacity(bytes.length + 1);
         nioByteBuffer.put(bytes, 0, bytes.length);
         putByte((byte) 0); // For C++ zero terminated string
         callBackFunction();
     }
 
     @Override
-    public void putStringArray(final String[] src, final long offset, final int n) {
+    public void putStringArray(final String[] src, final int offset, final int n) {
         final int nElements = putArraySizeDescriptor(n > 0 ? Math.min(n, src.length) : src.length);
         if (isEnforceSimpleStringEncoding()) {
             for (int k = 0; k < nElements; k++) {
-                putStringISO8859(src[k + (int) offset]);
+                putStringISO8859(src[k + offset]);
             }
             callBackFunction();
             return;
         }
         for (int k = 0; k < nElements; k++) {
-            putString(src[k + (int) offset]);
+            putString(src[k + offset]);
         }
         callBackFunction();
     }
 
     @Override
-    public void putStringArray(final String[] src, final long offset, final int[] dims) {
+    public void putStringArray(final String[] src, final int offset, final int[] dims) {
         final int nElements = putArraySizeDescriptor(dims);
         if (isEnforceSimpleStringEncoding()) {
             for (int k = 0; k < nElements; k++) {
-                putStringISO8859(src[k + (int) offset]);
+                putStringISO8859(src[k + offset]);
             }
             callBackFunction();
             return;
         }
         for (int k = 0; k < nElements; k++) {
-            putString(src[k + (int) offset]);
+            putString(src[k + offset]);
         }
         callBackFunction();
     }
@@ -605,7 +605,7 @@ public class ByteBuffer implements IoBuffer {
     }
 
     @Override
-    public long remaining() {
+    public int remaining() {
         return nioByteBuffer.remaining();
     }
 

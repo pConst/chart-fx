@@ -23,9 +23,9 @@ public class WireDataFieldDescription implements FieldDescription {
     private final DataType dataType;
     private final List<FieldDescription> children = new ArrayList<>();
     private final FieldDescription parent;
-    private long fieldStart;
-    private long dataStartOffset;
-    private long dataSize;
+    private int fieldStart;
+    private int dataStartOffset;
+    private int dataSize;
 
     /**
      * Constructs new serializer field header
@@ -41,7 +41,7 @@ public class WireDataFieldDescription implements FieldDescription {
      * @param dataSize the expected number of bytes to skip the data block
      */
     public WireDataFieldDescription(final WireDataFieldDescription parent, final int fieldNameHashCode, final String fieldName, final DataType dataType, //
-            final long fieldStart, final long dataStartOffset, final long dataSize) {
+            final int fieldStart, final int dataStartOffset, final int dataSize) {
         this.parent = parent;
         this.hashCode = fieldNameHashCode;
         this.fieldName = fieldName;
@@ -94,25 +94,17 @@ public class WireDataFieldDescription implements FieldDescription {
     }
 
     @Override
-    public long getDataSize() {
+    public int getDataSize() {
         return dataSize;
     }
 
-    public void setDataSize(final long size) {
-        dataSize = size;
-    }
-
     @Override
-    public long getDataStartOffset() {
+    public int getDataStartOffset() {
         return dataStartOffset;
     }
 
-    public void setDataStartOffset(final long offset) {
-        dataStartOffset = offset;
-    }
-
     @Override
-    public long getDataStartPosition() {
+    public int getDataStartPosition() {
         return fieldStart + dataStartOffset;
     }
 
@@ -127,17 +119,18 @@ public class WireDataFieldDescription implements FieldDescription {
     }
 
     @Override
+    public int getFieldNameHashCode() {
+        return hashCode;
+    }
+
+    @Override
     public String getFieldNameRelative() {
         return fieldNameRelative;
     }
 
     @Override
-    public long getFieldStart() {
+    public int getFieldStart() {
         return fieldStart;
-    }
-
-    public void setFieldStart(final long position) {
-        fieldStart = position;
     }
 
     @Override
@@ -164,6 +157,18 @@ public class WireDataFieldDescription implements FieldDescription {
             LOGGER.atInfo().log("FielHeader structure (no parent):");
         }
         printFieldStructure(this, 0);
+    }
+
+    public void setDataSize(final int size) {
+        dataSize = size;
+    }
+
+    public void setDataStartOffset(final int offset) {
+        dataStartOffset = offset;
+    }
+
+    public void setFieldStart(final int position) {
+        fieldStart = position;
     }
 
     @Override

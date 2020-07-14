@@ -34,7 +34,7 @@ public final class FieldBoxedValueArrayHelper {
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioBuffer, //
                 (obj, field) -> field.getField().set(obj, GenericsHelper.toObject(ioBuffer.getBuffer().getCharArray())), // reader
-                (obj, field) -> ioBuffer.getBuffer().putCharArray(GenericsHelper.toCharPrimitive((Byte[]) field.getField().get(obj))), // writer
+                (obj, field) -> ioBuffer.getBuffer().putCharArray(GenericsHelper.toCharPrimitive((Character[]) field.getField().get(obj))), // writer
                 Character[].class));
 
         serialiser.addClassDefinition(new IoBufferFieldSerialiser(ioBuffer, //

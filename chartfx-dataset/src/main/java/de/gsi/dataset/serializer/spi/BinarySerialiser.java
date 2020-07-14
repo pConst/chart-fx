@@ -261,12 +261,12 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
     @Override
     public WireDataFieldDescription getFieldHeader() {
-        final long headerStart = buffer.position();
+        final int headerStart = buffer.position();
         final byte dataTypeByte = buffer.getByte();
         final int fieldNameHashCode = buffer.getInt();
-        final long dataStartOffset = buffer.getInt();
-        final long dataStartPosition = headerStart + dataStartOffset;
-        long dataSize = buffer.getInt();
+        final int dataStartOffset = buffer.getInt();
+        final int dataStartPosition = headerStart + dataStartOffset;
+        int dataSize = buffer.getInt();
         final String fieldName;
         if (buffer.position() < dataStartPosition) {
             fieldName = buffer.getStringISO8859();
@@ -303,7 +303,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
         // check for header-dataStart offset consistentcy
         if (buffer.position() != dataStartPosition) {
-            final long diff = dataStartPosition - buffer.position();
+            final int diff = dataStartPosition - buffer.position();
             throw new IllegalStateException("could not parse FieldHeader: fieldName='" + dataType + ":" + fieldName + "' dataOffset = " + dataStartOffset + " bytes (read) -- " //
                                             + " buffer position is " + buffer.position() + " vs. calculated " + dataStartPosition + " diff = " + diff);
         }
@@ -312,7 +312,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
             if (dataType.isScalar()) {
                 dataSize = dataType.getPrimitiveSize();
             } else if (dataType == DataType.STRING) {
-                final long pos = buffer.position();
+                final int pos = buffer.position();
                 dataSize = FastByteBuffer.SIZE_OF_INT + buffer.getInt(); // <(>string size -1> + <string byte data>
                 buffer.position(pos);
             }
@@ -505,7 +505,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
 
         putFieldHeader(markerName, DataType.END_MARKER);
-        buffer.putStartMarker(markerName);
+        buffer.putEndMarker(markerName);
     }
 
     @Override
@@ -516,13 +516,13 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
 
     @Override
     public WireDataFieldDescription putFieldHeader(final String fieldName, final DataType dataType) {
-        final long addCapacity = ((fieldName.length() + 18) * FastByteBuffer.SIZE_OF_BYTE) + bufferIncrements + dataType.getPrimitiveSize();
+        final int addCapacity = ((fieldName.length() + 18) * FastByteBuffer.SIZE_OF_BYTE) + bufferIncrements + dataType.getPrimitiveSize();
         buffer.setCallBackFunction(null);
         buffer.ensureAdditionalCapacity(addCapacity);
         final boolean isScalar = dataType.isScalar();
 
         // -- offset 0 vs. field start
-        final long headerStart = buffer.position();
+        final int headerStart = buffer.position();
         buffer.putByte(getDataType(dataType)); // data type ID
         buffer.putInt(fieldName.hashCode()); // unique hashCode identifier -- TODO: unify across C++/Java & optimise performance
         buffer.putInt(-1); // dataStart offset
@@ -538,7 +538,7 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
 
         // -- offset dataStart calculations
-        final long fieldHeaderDataStart = buffer.position();
+        final int fieldHeaderDataStart = buffer.position();
         final int dataStartOffset = (int) (fieldHeaderDataStart - headerStart);
         buffer.position(headerStart + 5);
         buffer.putInt(dataStartOffset); // write offset to dataStart
@@ -639,13 +639,13 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     @Override
     public void updateDataEndMarker(final WireDataFieldDescription fieldHeader, final int... offset) {
         final WireDataFieldDescription localFieldHeader = fieldHeader == null ? lastFieldHeader : fieldHeader;
-        final long sizeMarkerEnd = buffer.position();
+        final int sizeMarkerEnd = buffer.position();
         if (sizeMarkerEnd >= buffer.capacity()) {
             throw new IllegalStateException("buffer position " + sizeMarkerEnd + " is beyond buffer capacity " + buffer.capacity());
         }
 
-        final long headerStart = localFieldHeader.getFieldStart();
-        final long dataStart = headerStart + localFieldHeader.getDataStartOffset();
+        final int headerStart = localFieldHeader.getFieldStart();
+        final int dataStart = headerStart + localFieldHeader.getDataStartOffset();
         final int fieldOffset = offset.length == 0 ? 0 : offset[0];
         final int dataSize = (int) (sizeMarkerEnd - dataStart) - fieldOffset;
         localFieldHeader.setDataSize(dataSize);
@@ -712,8 +712,8 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
         }
         WireDataFieldDescription field;
         while ((field = getFieldHeader()) != null) {
-            final long dataSize = field.getDataSize();
-            final long skipPosition = field.getDataStartPosition() + dataSize;
+            final int dataSize = field.getDataSize();
+            final int skipPosition = field.getDataStartPosition() + dataSize;
 
             if (field.getDataType() == DataType.END_MARKER) {
                 // reached end of (sub-)class - close nested hierarchy

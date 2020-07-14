@@ -52,7 +52,7 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
         final int nElements = axisDescriptions.size();
         final int entrySize = 50; // as an initial estimate
 
-        ioSerialiser.getBuffer().ensureAdditionalCapacity((nElements * entrySize) + 9L);
+        ioSerialiser.getBuffer().ensureAdditionalCapacity((nElements * entrySize) + 9);
         ioSerialiser.getBuffer().putInt(nElements); // number of elements
         for (AxisDescription axis : axisDescriptions) {
             ioSerialiser.getBuffer().putString(axis.getName());

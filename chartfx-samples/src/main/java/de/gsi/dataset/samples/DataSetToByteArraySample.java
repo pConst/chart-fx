@@ -48,7 +48,7 @@ public class DataSetToByteArraySample {
         DataSetUtils.writeDataSetToByteArray(original, byteOutput, true, false);
         LOGGER.atInfo().addArgument(encodingBits(false)).addArgument(encodingBinary(true)).addArgument(humanReadableByteCount(byteOutput.size(), true)).log("byte buffer array length with {} {} encoding =  = {}");
 
-        byteBuffer.ensureCapacity(byteOutput.size() + 1000L);
+        byteBuffer.ensureCapacity(byteOutput.size() + 1000);
     }
 
     public void clearGarbage() {

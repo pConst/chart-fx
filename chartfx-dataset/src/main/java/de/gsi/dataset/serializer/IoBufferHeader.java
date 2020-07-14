@@ -55,9 +55,9 @@ public interface IoBufferHeader {
      */
     void clear();
 
-    void ensureAdditionalCapacity(final long capacity);
+    void ensureAdditionalCapacity(final int capacity);
 
-    void ensureCapacity(final long capacity);
+    void ensureCapacity(final int capacity);
 
     /**
      * Forces buffer to contain the given number of entries, preserving just a part of the array.
@@ -66,7 +66,7 @@ public interface IoBufferHeader {
      * @param preserve the number of elements of the old buffer that shall be preserved in case a new allocation is
      *        necessary.
      */
-    void forceCapacity(final long length, final long preserve);
+    void forceCapacity(final int length, final int preserve);
 
     /**
      * @return {@code true} if, and only if, there is at least one element remaining in this buffer
@@ -81,7 +81,7 @@ public interface IoBufferHeader {
     /**
      * @return the limit of this buffer
      */
-    long limit();
+    int limit();
 
     /**
      * Sets this buffer's limit. If the position is larger than the new limit then it is set to the new limit. If the
@@ -102,19 +102,19 @@ public interface IoBufferHeader {
     /**
      * @return the position of this buffer
      */
-    long position();
+    int position();
 
     /**
      * Sets this buffer's position. If the mark is defined and larger than the new position then it is discarded.
      *
      * @param newPosition the new position value; must be non-negative and no larger than the current limit
      */
-    void position(final long newPosition);
+    void position(final int newPosition);
 
     /**
      * @return the number of elements remaining in this buffer
      */
-    long remaining();
+    int remaining();
 
     /**
      * resets the buffer read/write position to zero

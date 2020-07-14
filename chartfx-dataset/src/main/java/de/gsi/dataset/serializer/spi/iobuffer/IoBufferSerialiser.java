@@ -81,7 +81,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             return;
         }
 
-        if (fieldRoot.hashCode() != classFieldDescription.hashCode() /*|| !fieldRoot.getFieldName().equals(classFieldDescription.getFieldName())*/) {
+        if (fieldRoot.getFieldNameHashCode() != classFieldDescription.getFieldNameHashCode() /*|| !fieldRoot.getFieldName().equals(classFieldDescription.getFieldName())*/) {
             // did not find matching (sub-)field in class
             if (fieldRoot.getChildren().isEmpty()) {
                 return;
@@ -89,7 +89,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             // check for potential inner fields
             for (final FieldDescription fieldDescription : fieldRoot.getChildren()) {
                 Map<Integer, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new HashMap<>());
-                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.hashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
+                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.getFieldNameHashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
 
                 if (subFieldDescription != null) {
                     deserialise(obj, fieldDescription, subFieldDescription, recursionDepth + 1);
@@ -119,7 +119,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             // no specific deserialiser present check for potential inner fields
             for (final FieldDescription fieldDescription : fieldRoot.getChildren()) {
                 Map<Integer, ClassFieldDescription> rMap = fieldToClassFieldDescription.computeIfAbsent(recursionDepth, depth -> new HashMap<>());
-                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.hashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
+                final ClassFieldDescription subFieldDescription = rMap.computeIfAbsent(fieldDescription.getFieldNameHashCode(), fieldNameHashCode -> (ClassFieldDescription) classFieldDescription.findChildField(fieldNameHashCode, fieldDescription.getFieldName()));
 
                 if (subFieldDescription != null) {
                     deserialise(subRef, fieldDescription, subFieldDescription, recursionDepth + 1);
@@ -139,7 +139,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             throw new IllegalArgumentException("obj must not be null (yet)");
         }
 
-        final long startPosition = ioSerialiser.getBuffer().position();
+        final int startPosition = ioSerialiser.getBuffer().position();
 
         // match field header with class field description
         final ClassFieldDescription classFieldDescription = ClassDescriptions.get(obj.getClass());

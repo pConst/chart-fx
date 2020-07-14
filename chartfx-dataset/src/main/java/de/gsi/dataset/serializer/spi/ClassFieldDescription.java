@@ -162,7 +162,6 @@ public class ClassFieldDescription implements FieldDescription {
         // add child to parent if it serializable or if a full scan is requested
         if (this.parent != null && (serializable || fullScan)) {
             this.parent.getChildren().add(this);
-            //TODO: check if continues to be necessary this.parent.get().getFieldMap().put(fieldName, this);
         }
     }
 
@@ -196,11 +195,13 @@ public class ClassFieldDescription implements FieldDescription {
         if (!(obj instanceof FieldDescription)) {
             return false;
         }
-        if (this.hashCode() != obj.hashCode()) {
+        final FieldDescription other = (FieldDescription) obj;
+
+        if (this.getFieldNameHashCode() != other.getFieldNameHashCode()) {
             return false;
         }
 
-        return this.getFieldName().equals(((FieldDescription) obj).getFieldName());
+        return this.getFieldName().equals(other.getFieldName());
     }
 
     @Override
@@ -211,7 +212,7 @@ public class ClassFieldDescription implements FieldDescription {
             if (name == fieldName) { // NOPMD early return if the same String object reference
                 return child;
             }
-            if (child.hashCode() == fieldNameHashCode && name.equals(fieldName)) {
+            if (child.getFieldNameHashCode() == fieldNameHashCode && name.equals(fieldName)) {
                 return child;
             }
         }
@@ -262,17 +263,17 @@ public class ClassFieldDescription implements FieldDescription {
     }
 
     @Override
-    public long getDataSize() {
+    public int getDataSize() {
         return 0;
     }
 
     @Override
-    public long getDataStartOffset() {
+    public int getDataStartOffset() {
         return 0;
     }
 
     @Override
-    public long getDataStartPosition() {
+    public int getDataStartPosition() {
         return 0;
     }
 
@@ -297,6 +298,11 @@ public class ClassFieldDescription implements FieldDescription {
         return fieldName;
     }
 
+    @Override
+    public int getFieldNameHashCode() {
+        return hashCode;
+    }
+
     /**
      * @return relative field name within class hierarchy (ie. field_level0.field_level1.variable_0)
      */
@@ -304,17 +310,13 @@ public class ClassFieldDescription implements FieldDescription {
         return fieldNameRelative;
     }
 
-    @Override
-    public long getFieldStart() {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
     public FieldSerialiser getFieldSerialiser() {
         return fieldSerialiser;
     }
 
-    public void setFieldSerialiser(final FieldSerialiser fieldSerialiser) {
-        this.fieldSerialiser = fieldSerialiser;
+    @Override
+    public int getFieldStart() {
+        throw new UnsupportedOperationException("not implemented");
     }
 
     /**
@@ -539,6 +541,10 @@ public class ClassFieldDescription implements FieldDescription {
         printClassStructure(this, true, 0);
     }
 
+    public void setFieldSerialiser(final FieldSerialiser fieldSerialiser) {
+        this.fieldSerialiser = fieldSerialiser;
+    }
+
     @Override
     public String toString() {
         if (toStringName == null) {
@@ -546,20 +552,6 @@ public class ClassFieldDescription implements FieldDescription {
                            + getTypeName() + " " + getFieldNameRelative() + " (hierarchyDepth = " + getHierarchyDepth() + ")";
         }
         return toStringName;
-    }
-
-    public static void printClassStructure(final ClassFieldDescription field, final boolean fullView, final int recursionLevel) {
-        final String enumOrClass = field.isEnum() ? "Enum " : "class ";
-        final String typeCategorgy = (field.isInterface() ? "interface " : (field.isPrimitive() ? "" : enumOrClass));
-        final String typeName = field.getTypeName() + field.getGenericFieldTypeString();
-        final String mspace = spaces(recursionLevel * INDENTATION_NUMER_OF_SPACE);
-        final boolean isSerialisable = field.isSerializable();
-
-        if (isSerialisable || fullView) {
-            LOGGER.atInfo().addArgument(mspace).addArgument(isSerialisable ? "  " : "//").addArgument(field.getModifierString()).addArgument(typeCategorgy).addArgument(typeName).addArgument(field.getFieldNameRelative()).log("{} {} {} {}{} {}");
-
-            field.getChildren().forEach(f -> printClassStructure((ClassFieldDescription) f, fullView, recursionLevel + 1));
-        }
     }
 
     protected static void exploreClass(final Class<?> classType, final ClassFieldDescription parent, final int recursionLevel, final boolean fullScan) {
@@ -607,14 +599,27 @@ public class ClassFieldDescription implements FieldDescription {
         }
     }
 
+    public static void printClassStructure(final ClassFieldDescription field, final boolean fullView, final int recursionLevel) {
+        final String enumOrClass = field.isEnum() ? "Enum " : "class ";
+        final String typeCategorgy = (field.isInterface() ? "interface " : (field.isPrimitive() ? "" : enumOrClass));
+        final String typeName = field.getTypeName() + field.getGenericFieldTypeString();
+        final String mspace = spaces(recursionLevel * INDENTATION_NUMER_OF_SPACE);
+        final boolean isSerialisable = field.isSerializable();
+
+        if (isSerialisable || fullView) {
+            LOGGER.atInfo().addArgument(mspace).addArgument(isSerialisable ? "  " : "//").addArgument(field.getModifierString()).addArgument(typeCategorgy).addArgument(typeName).addArgument(field.getFieldNameRelative()).log("{} {} {} {}{} {}");
+
+            field.getChildren().forEach(f -> printClassStructure((ClassFieldDescription) f, fullView, recursionLevel + 1));
+        }
+    }
+
     private static String spaces(final int spaces) {
         return CharBuffer.allocate(spaces).toString().replace('\0', ' ');
     }
 
     public static class FieldAccess {
         private static final Unsafe unsafe; // NOPMD
-        private final Field field;
-        private final long fieldByteOffset;
+
         static {
             // get an instance of the otherwise private 'Unsafe' class
             try {
@@ -625,6 +630,9 @@ public class ClassFieldDescription implements FieldDescription {
                 throw new SecurityException(e); // NOPMD
             }
         }
+
+        private final Field field;
+        private final long fieldByteOffset;
 
         private FieldAccess(final Field field) {
             this.field = field;

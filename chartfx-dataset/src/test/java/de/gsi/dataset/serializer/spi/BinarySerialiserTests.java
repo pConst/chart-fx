@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
@@ -62,8 +61,8 @@ class BinarySerialiserTests {
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
         final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer); // TODO: generalise to IoBuffer
 
-        Deque<Long> positionBefore = new LinkedList<>();
-        Deque<Long> positionAfter = new LinkedList<>();
+        Deque<Integer> positionBefore = new LinkedList<>();
+        Deque<Integer> positionAfter = new LinkedList<>();
 
         // add primitive array types
         positionBefore.add(buffer.position());
@@ -118,7 +117,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("boolean", header.getFieldName(), "boolean field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -135,7 +134,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("byte", header.getFieldName(), "byte field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -152,7 +151,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("short", header.getFieldName(), "short field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -169,7 +168,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("int", header.getFieldName(), "int field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -187,7 +186,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("long", header.getFieldName(), "long field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -205,7 +204,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("float", header.getFieldName(), "float field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -223,7 +222,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("double", header.getFieldName(), "double field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -241,7 +240,7 @@ class BinarySerialiserTests {
         assertEquals(positionBefore.removeFirst(), buffer.position());
         header = ioSerialiser.getFieldHeader();
         assertEquals("string", header.getFieldName(), "string field name retrieval");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         assertEquals(positionAfterFieldHeader, header.getDataStartPosition(), "data start position");
         assertEquals(positionAfter.peekFirst(), header.getDataStartPosition() + header.getDataSize(), "data end skip address");
         dims = ioSerialiser.getBuffer().getArraySizeDescriptor();
@@ -265,8 +264,8 @@ class BinarySerialiserTests {
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
         final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer); // TODO: generalise to IoBuffer
 
-        Deque<Long> positionBefore = new LinkedList<>();
-        Deque<Long> positionAfter = new LinkedList<>();
+        Deque<Integer> positionBefore = new LinkedList<>();
+        Deque<Integer> positionAfter = new LinkedList<>();
 
         // add primitive types
         positionBefore.add(buffer.position());
@@ -412,8 +411,8 @@ class BinarySerialiserTests {
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
         final BinarySerialiser ioSerialiser = new BinarySerialiser(buffer);
 
-        Deque<Long> positionBefore = new LinkedList<>();
-        Deque<Long> positionAfter = new LinkedList<>();
+        Deque<Integer> positionBefore = new LinkedList<>();
+        Deque<Integer> positionAfter = new LinkedList<>();
 
         // add start marker
         positionBefore.add(buffer.position());
@@ -498,7 +497,7 @@ class BinarySerialiserTests {
         header = ioSerialiser.getFieldHeader();
         assertEquals("collection", header.getFieldName(), "Collection<E> field name");
         assertEquals(DataType.COLLECTION, header.getDataType(), "Collection<E> - type ID");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         skipNBytes = header.getDataSize(); // number of bytes to be skipped till end of this data chunk
         assertNotNull(positionAfter.peekFirst());
         assertEquals(positionAfter.peekFirst() - positionAfterFieldHeader, skipNBytes, "buffer skip address");
@@ -506,7 +505,7 @@ class BinarySerialiserTests {
         assertEquals(ARRAY_DIM_1D, ioSerialiser.getBuffer().getInt(), "dimension");
         assertEquals(3, ioSerialiser.getBuffer().getInt(), "array size");
         buffer.position(header.getDataStartPosition());
-        final long readPosition = buffer.position();
+        final int readPosition = buffer.position();
         Collection<Integer> retrievedCollection = ioSerialiser.getCollection(null);
         assertNotNull(retrievedCollection, "retrieved collection not null");
         assertEquals(list, retrievedCollection);
@@ -523,7 +522,7 @@ class BinarySerialiserTests {
         header = ioSerialiser.getFieldHeader();
         assertEquals("set", header.getFieldName(), "Set<E> field name");
         assertEquals(DataType.SET, header.getDataType(), "Set<E> - type ID");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         skipNBytes = header.getDataSize(); // number of bytes to be skipped till end of this data chunk
         assertNotNull(positionAfter.peekFirst());
         assertEquals(positionAfter.peekFirst() - positionAfterFieldHeader, skipNBytes, "buffer skip address");
@@ -541,7 +540,7 @@ class BinarySerialiserTests {
         header = ioSerialiser.getFieldHeader();
         assertEquals("queue", header.getFieldName(), "Queue<E> field name");
         assertEquals(DataType.QUEUE, header.getDataType(), "Queue<E> - type ID");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         skipNBytes = header.getDataSize(); // number of bytes to be skipped till end of this data chunk
         assertNotNull(positionAfter.peekFirst());
         assertEquals(positionAfter.peekFirst() - positionAfterFieldHeader, skipNBytes, "buffer skip address");
@@ -564,7 +563,7 @@ class BinarySerialiserTests {
         header = ioSerialiser.getFieldHeader();
         assertEquals("map", header.getFieldName(), "Map<K,V> field name");
         assertEquals(DataType.MAP, header.getDataType(), "Map<K,V> - type ID");
-        positionAfterFieldHeader = (int) buffer.position(); // actual buffer position after having read the field header
+        positionAfterFieldHeader = buffer.position(); // actual buffer position after having read the field header
         skipNBytes = header.getDataSize(); // number of bytes to be skipped till end of this data chunk
         assertNotNull(positionAfter.peekFirst());
         assertEquals(positionAfter.peekFirst() - positionAfterFieldHeader, skipNBytes, "buffer skip address");
@@ -744,7 +743,7 @@ class BinarySerialiserTests {
         assertArrayEquals(new Byte[] { (byte) 1.0, (byte) 0.0, (byte) 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.BYTE));
         assertArrayEquals(new Character[] { (char) 1.0, (char) 0.0, (char) 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.CHAR));
         assertArrayEquals(new Short[] { (short) 1.0, (short) 0.0, (short) 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.SHORT));
-        assertArrayEquals(new Integer[] { (int) 1.0, (int) 0.0, (int) 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.INT));
+        assertArrayEquals(new Integer[] { 1, 0, 2 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.INT));
         assertArrayEquals(new Long[] { (long) 1.0, (long) 0.0, (long) 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.LONG));
         assertArrayEquals(new Float[] { 1.0f, 0.0f, 2.0f }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.FLOAT));
         assertArrayEquals(new Double[] { 1.0, 0.0, 2.0 }, ioSerialiser.getGenericArrayAsBoxedPrimitive(DataType.DOUBLE));
