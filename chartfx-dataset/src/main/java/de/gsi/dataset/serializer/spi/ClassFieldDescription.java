@@ -1,5 +1,6 @@
 package de.gsi.dataset.serializer.spi;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -8,6 +9,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,6 +19,11 @@ import org.slf4j.LoggerFactory;
 
 import de.gsi.dataset.serializer.DataType;
 import de.gsi.dataset.serializer.FieldDescription;
+import de.gsi.dataset.serializer.annotations.Description;
+import de.gsi.dataset.serializer.annotations.Direction;
+import de.gsi.dataset.serializer.annotations.Groups;
+import de.gsi.dataset.serializer.annotations.MetaInfo;
+import de.gsi.dataset.serializer.annotations.Unit;
 
 import sun.misc.Unsafe;
 
@@ -31,10 +39,15 @@ public class ClassFieldDescription implements FieldDescription {
      */
     public static int maxRecursionLevel = 10;
     private final int hierarchyDepth;
-    private final int hashCode;
     private final FieldAccess fieldAccess;
     private final String fieldName;
+    private final int fieldNameHashCode;
     private final String fieldNameRelative;
+    private final String fieldUnit;
+    private final String fieldDescription;
+    private final String fieldDirection;
+    private final List<String> fieldGroups;
+    private final boolean annotationPresent;
     private final FieldDescription parent;
     private final List<FieldDescription> children = new ArrayList<>();
     private final Class<?> classType;
@@ -66,7 +79,7 @@ public class ClassFieldDescription implements FieldDescription {
     private String genericTypeNames; // computed on demand and cached
     private String modifierStr; // computed on demand and cached
     // serialiser info
-    private FieldSerialiser fieldSerialiser;
+    private FieldSerialiser<?> fieldSerialiser;
 
     /**
      * This should be called only once with the root class as an argument
@@ -87,8 +100,7 @@ public class ClassFieldDescription implements FieldDescription {
         exploreClass(classType, this, 0, fullScan);
     }
 
-    protected ClassFieldDescription(final Class<?> referenceClass, final Field field,
-            final ClassFieldDescription parent, final int recursionLevel) {
+    protected ClassFieldDescription(final Class<?> referenceClass, final Field field, final ClassFieldDescription parent, final int recursionLevel) {
         super();
         hierarchyDepth = recursionLevel;
         this.parent = parent;
@@ -99,22 +111,32 @@ public class ClassFieldDescription implements FieldDescription {
             }
             fieldAccess = new FieldAccess(field);
             classType = field.getType();
-            hashCode = field.getName().hashCode();
+            fieldNameHashCode = field.getName().hashCode();
             fieldName = field.getName();
             fieldNameRelative = this.parent == null ? fieldName : parent.getFieldNameRelative() + "." + fieldName;
 
             modifierID = field.getModifiers();
+            dataType = DataType.fromClassType(classType);
         } else {
             fieldAccess = null; // it's a root, no field definition available
             classType = referenceClass;
-            hashCode = classType.getName().hashCode();
+            fieldNameHashCode = classType.getName().hashCode();
             fieldName = classType.getName();
             fieldNameRelative = fieldName;
 
             modifierID = classType.getModifiers();
+            dataType = DataType.START_MARKER;
         }
 
-        dataType = DataType.fromClassType(classType);
+        // read annotation values
+        AnnotatedElement annotatedElement = field == null ? referenceClass : field;
+        fieldUnit = getFieldUnit(annotatedElement);
+        fieldDescription = getFieldDescription(annotatedElement);
+        fieldDirection = getFieldDirection(annotatedElement);
+        fieldGroups = getFieldGroups(annotatedElement);
+
+        annotationPresent = fieldUnit != null || fieldDescription != null || fieldDirection != null || !fieldGroups.isEmpty();
+
         typeName = ClassDescriptions.translateClassName(classType.getTypeName());
 
         modPublic = Modifier.isPublic(modifierID);
@@ -136,6 +158,59 @@ public class ClassFieldDescription implements FieldDescription {
         isclass = !isprimitive && !modInterface;
         isEnum = Enum.class.isAssignableFrom(classType);
         serializable = !modTransient && !modStatic;
+    }
+
+    @Override
+    public boolean isAnnotationPresent() {
+        return annotationPresent;
+    }
+
+    private static String getFieldUnit(final AnnotatedElement annotatedElement) {
+        final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
+        if (annotationMeta != null && annotationMeta.length > 0) {
+            return annotationMeta[0].unit();
+        }
+        final Unit[] annotationUnit = annotatedElement.getAnnotationsByType(Unit.class);
+        if (annotationUnit != null && annotationUnit.length > 0) {
+            return annotationUnit[0].value();
+        }
+        return null;
+    }
+
+    private static String getFieldDescription(final AnnotatedElement annotatedElement) {
+        final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
+        if (annotationMeta != null && annotationMeta.length > 0) {
+            return annotationMeta[0].description();
+        }
+        final Description[] annotationDescription = annotatedElement.getAnnotationsByType(Description.class);
+        if (annotationDescription != null && annotationDescription.length > 0) {
+            return annotationDescription[0].value();
+        }
+        return null;
+    }
+
+    private static String getFieldDirection(final AnnotatedElement annotatedElement) {
+        final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
+        if (annotationMeta != null && annotationMeta.length > 0) {
+            return annotationMeta[0].direction();
+        }
+        final Direction[] annotationDirection = annotatedElement.getAnnotationsByType(Direction.class);
+        if (annotationDirection != null && annotationDirection.length > 0) {
+            return annotationDirection[0].value();
+        }
+        return null;
+    }
+
+    private static List<String> getFieldGroups(final AnnotatedElement annotatedElement) {
+        final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
+        if (annotationMeta != null && annotationMeta.length > 0) {
+            return Arrays.asList(annotationMeta[0].groups());
+        }
+        final Groups[] annotationGroups = annotatedElement.getAnnotationsByType(Groups.class);
+        if (annotationGroups != null && annotationGroups.length > 0) {
+            return Arrays.asList(annotationGroups[0].value());
+        }
+        return Collections.emptyList();
     }
 
     /**
@@ -165,8 +240,7 @@ public class ClassFieldDescription implements FieldDescription {
         }
     }
 
-    public Object allocateMemberClassField(final Object fieldParent)
-            throws IllegalAccessException {
+    public Object allocateMemberClassField(final Object fieldParent) {
         try {
             // need to allocate new class object
             Class<?> fieldParentClass = getParent(this, 1).getType();
@@ -181,7 +255,7 @@ public class ClassFieldDescription implements FieldDescription {
             this.getField().set(fieldParent, newFieldObj);
 
             return newFieldObj;
-        } catch (InstantiationException | InvocationTargetException | SecurityException | NoSuchMethodException e) {
+        } catch (InstantiationException | InvocationTargetException | SecurityException | NoSuchMethodException | IllegalAccessException e) {
             LOGGER.atError().setCause(e).log("error initialising inner class object");
         }
         return null;
@@ -196,8 +270,11 @@ public class ClassFieldDescription implements FieldDescription {
             return false;
         }
         final FieldDescription other = (FieldDescription) obj;
-
         if (this.getFieldNameHashCode() != other.getFieldNameHashCode()) {
+            return false;
+        }
+
+        if (this.getDataType() != other.getDataType()) {
             return false;
         }
 
@@ -291,6 +368,21 @@ public class ClassFieldDescription implements FieldDescription {
         return fieldAccess;
     }
 
+    @Override
+    public String getFieldDescription() {
+        return fieldDescription;
+    }
+
+    @Override
+    public String getFieldDirection() {
+        return fieldDirection;
+    }
+
+    @Override
+    public List<String> getFieldGroups() {
+        return fieldGroups;
+    }
+
     /**
      * @return the underlying field name
      */
@@ -300,7 +392,7 @@ public class ClassFieldDescription implements FieldDescription {
 
     @Override
     public int getFieldNameHashCode() {
-        return hashCode;
+        return fieldNameHashCode;
     }
 
     /**
@@ -310,13 +402,18 @@ public class ClassFieldDescription implements FieldDescription {
         return fieldNameRelative;
     }
 
-    public FieldSerialiser getFieldSerialiser() {
+    public FieldSerialiser<?> getFieldSerialiser() {
         return fieldSerialiser;
     }
 
     @Override
     public int getFieldStart() {
         throw new UnsupportedOperationException("not implemented");
+    }
+
+    @Override
+    public String getFieldUnit() {
+        return fieldUnit;
     }
 
     /**
@@ -413,7 +510,7 @@ public class ClassFieldDescription implements FieldDescription {
 
     @Override
     public int hashCode() {
-        return hashCode;
+        return fieldNameHashCode;
     }
 
     /**
@@ -541,7 +638,7 @@ public class ClassFieldDescription implements FieldDescription {
         printClassStructure(this, true, 0);
     }
 
-    public void setFieldSerialiser(final FieldSerialiser fieldSerialiser) {
+    public void setFieldSerialiser(final FieldSerialiser<?> fieldSerialiser) {
         this.fieldSerialiser = fieldSerialiser;
     }
 
@@ -549,7 +646,7 @@ public class ClassFieldDescription implements FieldDescription {
     public String toString() {
         if (toStringName == null) {
             toStringName = ClassFieldDescription.class.getSimpleName() + " for: " + getModifierString() + " "
-                           + getTypeName() + " " + getFieldNameRelative() + " (hierarchyDepth = " + getHierarchyDepth() + ")";
+                           + getTypeName() + " " + getFieldName() + " (hierarchyDepth = " + getHierarchyDepth() + ")";
         }
         return toStringName;
     }
@@ -607,7 +704,19 @@ public class ClassFieldDescription implements FieldDescription {
         final boolean isSerialisable = field.isSerializable();
 
         if (isSerialisable || fullView) {
-            LOGGER.atInfo().addArgument(mspace).addArgument(isSerialisable ? "  " : "//").addArgument(field.getModifierString()).addArgument(typeCategorgy).addArgument(typeName).addArgument(field.getFieldNameRelative()).log("{} {} {} {}{} {}");
+            LOGGER.atInfo().addArgument(mspace).addArgument(isSerialisable ? "  " : "//") //
+                    .addArgument(field.getModifierString())
+                    .addArgument(typeCategorgy)
+                    .addArgument(typeName)
+                    .log("{} {} {} {}{}");
+            if (field.isAnnotationPresent()) {
+                LOGGER.atInfo().addArgument(mspace).addArgument(isSerialisable ? "  " : "//") //
+                        .addArgument(field.getFieldUnit())
+                        .addArgument(field.getFieldDescription())
+                        .addArgument(field.getFieldDirection())
+                        .addArgument(field.getFieldGroups())
+                        .log("{} {}         <meta-info: unit:'{}' description:'{}' direction:'{}' groups:'{}'>");
+            }
 
             field.getChildren().forEach(f -> printClassStructure((ClassFieldDescription) f, fullView, recursionLevel + 1));
         }

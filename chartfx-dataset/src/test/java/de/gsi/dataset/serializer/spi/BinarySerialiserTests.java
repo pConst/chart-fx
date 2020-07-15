@@ -414,14 +414,14 @@ class BinarySerialiserTests {
         Deque<Integer> positionBefore = new LinkedList<>();
         Deque<Integer> positionAfter = new LinkedList<>();
 
-        // add start marker
-        positionBefore.add(buffer.position());
-        ioSerialiser.putStartMarker("StartMarker");
-        positionAfter.add(buffer.position());
-
         // add header info
         positionBefore.add(buffer.position());
         ioSerialiser.putHeaderInfo();
+        positionAfter.add(buffer.position());
+
+        // add start marker
+        positionBefore.add(buffer.position());
+        ioSerialiser.putStartMarker("StartMarker");
         positionAfter.add(buffer.position());
 
         // add Collection - List<E>
@@ -472,24 +472,21 @@ class BinarySerialiserTests {
         // check types
         assertEquals(0, buffer.position(), "initial buffer position");
 
-        // start marker
-        assertEquals(positionBefore.removeFirst(), buffer.position());
-        header = ioSerialiser.getFieldHeader();
-        assertEquals("StartMarker", header.getFieldName(), "StartMarker type retrieval");
-        assertEquals(positionAfter.removeFirst(), buffer.position());
-
         // header info
         assertEquals(positionBefore.removeFirst(), buffer.position());
         ProtocolInfo headerInfo = ioSerialiser.checkHeaderInfo();
-        assertEquals(ioSerialiser.headerInfo, headerInfo);
-        assertNotNull(ioSerialiser.headerInfo.toString());
-        assertEquals(ioSerialiser.headerInfo.hashCode(), headerInfo.hashCode());
         assertNotEquals(headerInfo, new Object()); // silly comparison for coverage reasons
         assertNotNull(headerInfo);
         assertEquals(BinarySerialiser.class.getCanonicalName(), headerInfo.getProducerName());
         assertEquals(BinarySerialiser.VERSION_MAJOR, headerInfo.getVersionMajor());
         assertEquals(BinarySerialiser.VERSION_MINOR, headerInfo.getVersionMinor());
         assertEquals(BinarySerialiser.VERSION_MICRO, headerInfo.getVersionMicro());
+        assertEquals(positionAfter.removeFirst(), buffer.position());
+
+        // start marker
+        assertEquals(positionBefore.removeFirst(), buffer.position());
+        header = ioSerialiser.getFieldHeader();
+        assertEquals("StartMarker", header.getFieldName(), "StartMarker type retrieval");
         assertEquals(positionAfter.removeFirst(), buffer.position());
 
         // Collections - List
@@ -713,11 +710,10 @@ class BinarySerialiserTests {
         // and read back streamed items
         final WireDataFieldDescription objectRoot = ioSerialiser.parseIoStream(true);
         assertNotNull(objectRoot);
+        // objectRoot.printFieldStructure();
 
         buffer.reset();
         // check agnostic parsing of buffer
-        final ProtocolInfo bufferHeader2 = ioSerialiser.checkHeaderInfo();
-        assertNotNull(bufferHeader2);
         for (FieldDescription field : objectRoot.getChildren()) {
             buffer.position(field.getDataStartPosition());
             ioSerialiser.swallowRest(field);

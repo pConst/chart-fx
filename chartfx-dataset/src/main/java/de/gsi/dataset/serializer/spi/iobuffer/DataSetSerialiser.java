@@ -194,24 +194,24 @@ public class DataSetSerialiser { // NOPMD
         int dimIndex = getDimIndex(fieldName, ARRAY_PREFIX);
         if (dimIndex >= 0) {
             ioSerialiser.getBuffer().position(fieldDescription.getDataStartPosition());
-            builder.setValues(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
+            builder.setValuesNoCopy(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
         }
     }
 
     private void readNegError(final IoSerialiser ioSerialiser, final DataSetBuilder builder, FieldDescription fieldDescription, final String fieldName) {
-        int dimIndex = getDimIndex(fieldName, EP_PREFIX);
+        int dimIndex = getDimIndex(fieldName, EN_PREFIX);
         if (dimIndex >= 0) {
             ioSerialiser.getBuffer().position(fieldDescription.getDataStartPosition());
-            builder.setNegError(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
+            builder.setNegErrorNoCopy(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
         }
     }
 
     private void readPosError(final IoSerialiser ioSerialiser, final DataSetBuilder builder, FieldDescription fieldDescription,
             final String fieldName) {
-        int dimIndex = getDimIndex(fieldName, EN_PREFIX);
+        int dimIndex = getDimIndex(fieldName, EP_PREFIX);
         if (dimIndex >= 0) {
             ioSerialiser.getBuffer().position(fieldDescription.getDataStartPosition());
-            builder.setPosError(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
+            builder.setPosErrorNoCopy(dimIndex, getDoubleArray(ioSerialiser, fieldDescription.getDataType()));
         }
     }
 
@@ -248,7 +248,6 @@ public class DataSetSerialiser { // NOPMD
         }
 
         parseNumericData(ioSerialiser, builder, fieldRoot);
-
         return builder.build();
     }
 

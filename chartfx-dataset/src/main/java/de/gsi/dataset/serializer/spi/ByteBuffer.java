@@ -611,6 +611,9 @@ public class ByteBuffer implements IoBuffer {
 
     @Override
     public void reset() {
+        nioByteBuffer.position(0);
+        nioByteBuffer.mark();
+        nioByteBuffer.limit(nioByteBuffer.capacity());
         nioByteBuffer.reset();
         nioByteBuffer.mark();
     }

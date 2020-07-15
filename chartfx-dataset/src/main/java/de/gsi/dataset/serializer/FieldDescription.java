@@ -5,6 +5,8 @@ import java.util.List;
 public interface FieldDescription {
     int INDENTATION_NUMER_OF_SPACE = 4;
 
+    boolean isAnnotationPresent();
+
     FieldDescription findChildField(final int fieldNameHashCode, final String fieldName);
 
     List<FieldDescription> getChildren();
@@ -17,17 +19,23 @@ public interface FieldDescription {
 
     DataType getDataType();
 
+    String getFieldDescription();
+
+    String getFieldDirection();
+
+    List<String> getFieldGroups();
+
     String getFieldName();
 
-    String getFieldNameRelative();
+    int getFieldNameHashCode();
 
     int getFieldStart();
+
+    String getFieldUnit();
 
     FieldDescription getParent();
 
     Class<?> getType();
-
-    int getFieldNameHashCode();
 
     void printFieldStructure();
 }

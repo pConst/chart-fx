@@ -1,11 +1,12 @@
 package de.gsi.dataset.serializer.spi.iobuffer;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 
 import de.gsi.dataset.AxisDescription;
 import de.gsi.dataset.serializer.IoSerialiser;
 import de.gsi.dataset.serializer.spi.ClassFieldDescription;
+import de.gsi.dataset.serializer.spi.FieldSerialiser;
 import de.gsi.dataset.spi.DefaultAxisDescription;
 
 /**
@@ -13,24 +14,32 @@ import de.gsi.dataset.spi.DefaultAxisDescription;
  * 
  * @author rstein
  */
-public class FieldListAxisDescription extends IoBufferFieldSerialiser {
+public class FieldListAxisDescription extends FieldSerialiser<List<AxisDescription>> {
     /**
      * FieldSerialiser implementation for List&lt;AxisDescription&gt; to IoBuffer-backed byte-ioSerialiser
      * 
-     * @param ioSerialiser the backing IoSerialiser
-     * 
      */
-    public FieldListAxisDescription(IoSerialiser ioSerialiser) {
-        super(ioSerialiser, (obj, field) -> {}, (obj, field) -> {}, List.class, AxisDescription.class);
+    public FieldListAxisDescription() {
+        super((io, obj, field) -> {}, (io, obj, field) -> null, (io, obj, field) -> {}, List.class, AxisDescription.class);
         readerFunction = this::execFieldReader;
+        returnFunction = this::execFieldReturn;
         writerFunction = this::execFieldWriter;
     }
 
-    protected final void execFieldReader(final Object obj, ClassFieldDescription field) {
-        Collection<AxisDescription> setVal = (Collection<AxisDescription>) field.getField().get(obj); // NOPMD
-        // N.B. cast should fail at runtime (points to lib inconsistency)
-        setVal.clear();
+    protected void execFieldReader(final IoSerialiser ioSerialiser, final Object obj, ClassFieldDescription field) {
+        field.getField().set(obj, execFieldReturn(ioSerialiser, obj, field));
+    }
+
+    protected List<AxisDescription> execFieldReturn(final IoSerialiser ioSerialiser, Object obj, ClassFieldDescription field) {
+        final Object oldObject = field.getField().get(obj);
+        final boolean isListPresent = oldObject instanceof List;
+
         final int nElements = ioSerialiser.getBuffer().getInt(); // number of elements
+        // N.B. cast should fail at runtime (points to lib inconsistency)
+        List<AxisDescription> setVal = isListPresent ? (List<AxisDescription>) field.getField().get(obj) : new ArrayList<>(nElements); // NOPMD
+        if (isListPresent) {
+            setVal.clear();
+        }
 
         for (int i = 0; i < nElements; i++) {
             String axisName = ioSerialiser.getBuffer().getString();
@@ -42,10 +51,10 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
             setVal.add(ad);
         }
 
-        field.getField().set(obj, setVal);
+        return setVal;
     }
 
-    protected void execFieldWriter(Object obj, ClassFieldDescription field) {
+    protected void execFieldWriter(final IoSerialiser ioSerialiser, Object obj, ClassFieldDescription field) {
         final List<AxisDescription> axisDescriptions = (List<AxisDescription>) field.getField().get(obj); // NOPMD
         // N.B. cast should fail at runtime (points to lib inconsistency)
 
@@ -60,6 +69,6 @@ public class FieldListAxisDescription extends IoBufferFieldSerialiser {
             ioSerialiser.getBuffer().putDouble(axis.getMin());
             ioSerialiser.getBuffer().putDouble(axis.getMax());
         }
-        ioSerialiser.updateDataEndMarker(null);
+        //ioSerialiser.updateDataEndMarker(null);
     }
 }

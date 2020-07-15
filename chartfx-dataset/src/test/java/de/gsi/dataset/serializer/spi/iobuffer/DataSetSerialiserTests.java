@@ -6,10 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import static de.gsi.dataset.DataSet.DIM_X;
-import static de.gsi.dataset.DataSet.DIM_Y;
-
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +36,8 @@ import de.gsi.dataset.testdata.spi.TriangleFunction;
  */
 class DataSetSerialiserTests {
     private static final int BUFFER_SIZE = 10000;
+    private static final String[] DEFAULT_AXES_NAME = { "x", "y", "z" };
+    private static final double DELTA = 1e-3;
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
     @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
@@ -211,42 +211,32 @@ class DataSetSerialiserTests {
 
         IoBufferSerialiser serialiser = new IoBufferSerialiser(new BinarySerialiser(buffer));
 
-        final DefaultErrorDataSet original = new DefaultErrorDataSet("test", new double[] { 1f, 2f, 3f },
-                new double[] { 6f, 7f, 8f }, new double[] { 7f, 8f, 9f }, new double[] { 7f, 8f, 9f }, 3, false) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public ErrorType getErrorType(int dimIndex) {
-                if (dimIndex == 1) {
-                    return ErrorType.SYMMETRIC;
-                }
-                return super.getErrorType(dimIndex);
-            }
-        };
+        final DefaultErrorDataSet original = new DefaultErrorDataSet("test", //
+                new double[] { 1f, 2f, 3f }, new double[] { 6f, 7f, 8f }, //
+                new double[] { 0.7f, 0.8f, 0.9f }, new double[] { 7f, 8f, 9f }, 3, false);
         addMetaData(original, true);
-
         DataSetWrapper dsOrig = new DataSetWrapper();
         dsOrig.source = original;
         DataSetWrapper cpOrig = new DataSetWrapper();
 
+        // serialise-deserialise DataSet
         buffer.reset(); // '0' writing at start of buffer
         serialiser.serialiseObject(dsOrig);
         buffer.reset(); // reset to read position (==0)
         serialiser.deserialiseObject(cpOrig);
 
-        if (!(cpOrig.source instanceof DoubleErrorDataSet)) {
-            throw new IllegalStateException(
-                    "DataSet is not not instanceof DoubleErrorDataSet, might be DataSet3D or DoubleDataSet");
+        // check DataSet for equality
+        if (!(cpOrig.source instanceof DataSetError)) {
+            throw new IllegalStateException("DataSet " + cpOrig.source + " is not not instanceof DataSetError");
         }
+        DataSetError test = (DataSetError) (cpOrig.source);
 
-        testIdentityCore(true, asFloat32, original, (DoubleErrorDataSet) cpOrig.source);
-        testIdentityLabelsAndStyles(true, asFloat32, original, cpOrig.source);
-
-        if (cpOrig.source instanceof DataSetMetaData) {
-            testIdentityMetaData(true, asFloat32, original, (DataSetMetaData) cpOrig.source);
+        testIdentityCore(original, test);
+        testIdentityLabelsAndStyles(original, test, true);
+        if (test instanceof DataSetMetaData) {
+            testIdentityMetaData(original, (DataSetMetaData) test, true);
         }
-
-        assertEquals(dsOrig.source, cpOrig.source);
+        assertEquals(dsOrig.source, test);
     }
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
@@ -332,63 +322,26 @@ class DataSetSerialiserTests {
         return Math.abs((float) a - (float) b) > 2 / Math.pow(2, 23);
     }
 
-    private static void testIdentityCore(final boolean binary, final boolean asFloat32, final DataSetError originalDS,
-            final DataSetError testDS) {
+    private static void testIdentityCore(final DataSetError original, final DataSetError test) {
         // some checks
-        if (originalDS.getDataCount() != testDS.getDataCount()) {
-            throw new IllegalStateException("data set counts do not match (" + encodingBinary(binary) + "): original = " + originalDS.getDataCount() + " vs. copy = " + testDS.getDataCount());
-        }
+        assertEquals(original.getName(), test.getName(), "name");
+        assertEquals(original.getDimension(), test.getDimension(), "dimension");
 
-        if (!originalDS.getName().equals(testDS.getName())) {
-            throw new IllegalStateException("data set name do not match (" + encodingBinary(binary) + "): original = " + originalDS.getName() + " vs. copy = " + testDS.getName());
-        }
+        assertEquals(original.getDataCount(), test.getDataCount(), "getDataCount()");
 
         // check for numeric value
-        for (int i = 0; i < originalDS.getDataCount(); i++) {
-            final double x0 = originalDS.get(DIM_X, i);
-            final double y0 = originalDS.get(DIM_Y, i);
-            final double exn0 = originalDS.getErrorNegative(DIM_X, i);
-            final double exp0 = originalDS.getErrorPositive(DIM_X, i);
-            final double eyn0 = originalDS.getErrorNegative(DIM_Y, i);
-            final double eyp0 = originalDS.getErrorPositive(DIM_Y, i);
+        final int dataCount = original.getDataCount();
+        for (int dim = 0; dim < original.getDimension(); dim++) {
+            final String dStr = dim < DEFAULT_AXES_NAME.length ? DEFAULT_AXES_NAME[dim] : "dim" + (dim + 1) + "-Axis";
 
-            final double x1 = testDS.get(DIM_X, i);
-            final double y1 = testDS.get(DIM_Y, i);
-            final double exn1 = testDS.getErrorNegative(DIM_X, i);
-            final double exp1 = testDS.getErrorPositive(DIM_X, i);
-            final double eyn1 = testDS.getErrorNegative(DIM_Y, i);
-            final double eyp1 = testDS.getErrorPositive(DIM_Y, i);
-
-            if (asFloat32) {
-                if (floatInequality(x0, x1) || floatInequality(y0, y1) || floatInequality(exn0, exn1) || floatInequality(exp0, exp1) || floatInequality(eyn0, eyn1) || (eyp0 != eyp1)) {
-                    String diff = String.format(
-                            "(x=%e - %e, y=%e - %e, exn=%e - %e, exp=%e - %e, eyn=%e - %e, eyp=%e - %e)", x0, x1, y0,
-                            y1, exn0, exn1, exp0, exp1, eyn0, eyn1, eyp0, eyp1);
-                    String delta = String.format("(dx=%e, dy=%e, dexn=%e, dexp=%e, deyn=%e, deyp=%e)", x0 - x1, y0 - y1,
-                            exn0 - exn1, exp0 - exp1, eyn0 - eyn1, eyp0 - eyp1);
-                    String msg = String.format(
-                            "data set values do not match (%s): original-copy = at index %d%n%s%n%s%n",
-                            encodingBinary(binary), i, diff, delta);
-                    throw new IllegalStateException(msg);
-                }
-            } else {
-                if ((x0 != x1) || (y0 != y1) || (exn0 != exn1) || (exp0 != exp1) || (eyn0 != eyn1) || (eyp0 != eyp1)) {
-                    String diff = String.format(
-                            "(x=%e - %e, y=%e - %e, exn=%e - %e, exp=%e - %e, eyn=%e - %e, eyp=%e - %e)", x0, x1, y0,
-                            y1, exn0, exn1, exp0, exp1, eyn0, eyn1, eyp0, eyp1);
-                    String delta = String.format("(dx=%e, dy=%e, dexn=%e, dexp=%e, deyn=%e, deyp=%e)", x0 - x1, y0 - y1,
-                            exn0 - exn1, exp0 - exp1, eyn0 - eyn1, eyp0 - eyp1);
-                    String msg = String.format(
-                            "data set values do not match (%s): original-copy = at index %d%n%s%n%s%n",
-                            encodingBinary(binary), i, diff, delta);
-                    throw new IllegalStateException(msg);
-                }
-            }
+            assertEquals(original.getErrorType(dim), test.getErrorType(dim), dStr + " error Type");
+            assertArrayEquals(Arrays.copyOfRange(original.getValues(dim), 0, dataCount), Arrays.copyOfRange(test.getValues(dim), 0, dataCount), DELTA, dStr + "-Values");
+            assertArrayEquals(Arrays.copyOfRange(original.getErrorsPositive(dim), 0, dataCount), Arrays.copyOfRange(test.getErrorsPositive(dim), 0, dataCount), DELTA, dStr + "-Errors positive");
+            assertArrayEquals(Arrays.copyOfRange(original.getErrorsNegative(dim), 0, dataCount), Arrays.copyOfRange(test.getErrorsNegative(dim), 0, dataCount), DELTA, dStr + "-Errors negative");
         }
     }
 
-    private static void testIdentityLabelsAndStyles(final boolean binary, final boolean asFloat32, final DataSet2D originalDS,
-            final DataSet testDS) {
+    private static void testIdentityLabelsAndStyles(final DataSet2D originalDS, final DataSet testDS, final boolean binary) {
         // check for labels & styles
         for (int i = 0; i < originalDS.getDataCount(); i++) {
             if (originalDS.getDataLabel(i) == null && testDS.getDataLabel(i) == null) {
@@ -414,8 +367,7 @@ class DataSetSerialiserTests {
         }
     }
 
-    private static void testIdentityMetaData(final boolean binary, final boolean asFloat32, final DataSetMetaData originalDS,
-            final DataSetMetaData testDS) {
+    private static void testIdentityMetaData(final DataSetMetaData originalDS, final DataSetMetaData testDS, final boolean binary) {
         // check for meta data and meta messages
         if (!originalDS.getInfoList().equals(testDS.getInfoList())) {
             String msg = String.format("data set info lists do not match (%s): original ='%s' vs. copy ='%s' %n",
@@ -424,7 +376,7 @@ class DataSetSerialiserTests {
         }
     }
 
-    private class DataSetWrapper {
+    private static class DataSetWrapper {
         public DataSet source;
     }
 }

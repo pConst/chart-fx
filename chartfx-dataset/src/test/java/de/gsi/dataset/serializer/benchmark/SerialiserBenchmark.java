@@ -49,13 +49,11 @@ public class SerialiserBenchmark { // NOPMD - nomen est omen
 
     public static void checkIoBufferSerialiserIdentity() {
         byteBuffer.reset();
-        try {
-            ioSerialiser.serialiseObject(inputObject);
-        } catch (IllegalAccessException e) {
-            LOGGER.atError().setCause(e).log("caught serialisation error");
-        }
+
+        ioSerialiser.serialiseObject(inputObject);
+
         // SerialiserHelper.serialiseCustom(byteBuffer, inputObject);
-        nBytesIO = (int) byteBuffer.position();
+        nBytesIO = byteBuffer.position();
         LOGGER.atInfo().addArgument(nBytesIO).log("custom serialiser nBytes = {}");
 
         // keep: checks serialised data structure
@@ -64,11 +62,7 @@ public class SerialiserBenchmark { // NOPMD - nomen est omen
         // fieldRoot.printFieldStructure();
 
         byteBuffer.reset();
-        try {
-            outputObject = (TestDataClass) ioSerialiser.deserialiseObject(outputObject);
-        } catch (IllegalAccessException e) {
-            LOGGER.atError().setCause(e).log("caught serialisation error");
-        }
+        outputObject = (TestDataClass) ioSerialiser.deserialiseObject(outputObject);
 
         // second test - both vectors should have the same initial values after serialise/deserialise
         assertArrayEquals(inputObject.stringArray, outputObject.stringArray);
@@ -79,7 +73,7 @@ public class SerialiserBenchmark { // NOPMD - nomen est omen
     public static void checkCustomSerialiserIdentity() {
         byteBuffer.reset();
         SerialiserHelper.serialiseCustom(binarySerialiser, inputObject);
-        nBytesIO = (int) byteBuffer.position();
+        nBytesIO = byteBuffer.position();
         LOGGER.atInfo().addArgument(nBytesIO).log("custom serialiser nBytes = {}");
 
         // keep: checks serialised data structure
@@ -218,19 +212,11 @@ public class SerialiserBenchmark { // NOPMD - nomen est omen
 
         for (int i = 0; i < iterations; i++) {
             byteBuffer.reset();
-            try {
-                ioSerialiser.serialiseObject(inputObject);
-            } catch (IllegalAccessException e) {
-                LOGGER.atError().setCause(e).log("caught serialisation error");
-            }
+            ioSerialiser.serialiseObject(inputObject);
 
             byteBuffer.reset();
 
-            try {
-                outputObject = (TestDataClass) ioSerialiser.deserialiseObject(outputObject);
-            } catch (IllegalAccessException e) {
-                LOGGER.atError().setCause(e).log("caught serialisation error");
-            }
+            outputObject = (TestDataClass) ioSerialiser.deserialiseObject(outputObject);
 
             if (!inputObject.string1.contentEquals(outputObject.string1)) {
                 // quick check necessary so that the above is not optimised by the Java JIT compiler to NOP

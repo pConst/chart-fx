@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
@@ -19,12 +18,12 @@ import de.gsi.dataset.serializer.IoBuffer;
 /**
  * @author rstein
  */
-public class IoBufferTests {
+class IoBufferTests {
     protected static final boolean[] booleanTestArrray = { true, false, true, false };
     protected static final byte[] byteTestArrray = { 100, 101, 102, 103, -100, -101, -102, -103 };
     protected static final short[] shortTestArrray = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 }; // NOPMD by rstein
     protected static final int[] intTestArrray = { 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5 };
-    protected static final long[] longTestArrray = { Integer.MAX_VALUE, Integer.MAX_VALUE + 1, -Integer.MAX_VALUE - 2 };
+    protected static final long[] longTestArrray = { Integer.MAX_VALUE, Integer.MAX_VALUE - 1, -Integer.MAX_VALUE + 2 };
     protected static final float[] floatTestArrray = { 1.1e9f, 1.2e9f, 1.3e9f, -1.1e9f, -1.2e9f, -1.3e9f };
     protected static final double[] doubleTestArrray = { Float.MAX_VALUE + 1.1e9, Float.MAX_VALUE + 1.2e9, Float.MAX_VALUE + 1.3e9f, -Float.MAX_VALUE - 1.1e9f, -Float.MAX_VALUE - 1.2e9f, Float.MAX_VALUE - 1.3e9f };
     protected static final char[] charTestArrray = { 'a', 'b', 'c', 'd' };
@@ -34,7 +33,7 @@ public class IoBufferTests {
     @ParameterizedTest(name = "IoBuffer class - {0}")
     @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
     @SuppressWarnings("PMD.ExcessiveMethodLength")
-    public void primitivesArrays(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    void primitivesArrays(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
@@ -141,7 +140,7 @@ public class IoBufferTests {
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
     @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
-    public void primitivesMixed(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    void primitivesMixed(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
@@ -181,7 +180,7 @@ public class IoBufferTests {
 
     @ParameterizedTest(name = "IoBuffer class - {0}")
     @ValueSource(classes = { ByteBuffer.class, FastByteBuffer.class })
-    public void primitivesSimple(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    void primitivesSimple(final Class<? extends IoBuffer> bufferClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         assertNotNull(bufferClass, "bufferClass being not null");
         assertNotNull(bufferClass.getConstructor(int.class), "Constructor(Integer) present");
         final IoBuffer buffer = bufferClass.getConstructor(int.class).newInstance(BUFFER_SIZE);
@@ -243,20 +242,7 @@ public class IoBufferTests {
     }
 
     @Test
-    public void testFastBufferStringManipulations() {
-        final String source = "Hello World!";
-        final byte[] bytes = source.getBytes(StandardCharsets.ISO_8859_1);
-        final FastByteBuffer.FastStringBuilder builder = new FastByteBuffer.FastStringBuilder();
-
-        assertEquals(source, source);
-        assertArrayEquals(bytes, FastByteBuffer.FastStringBuilder.getByteValue(source));
-        assertEquals(source, builder.iso8859BytesToString(bytes, 0, bytes.length));
-        assertEquals(source, FastByteBuffer.FastStringBuilder.iso8859BytesToString2(bytes, 0, bytes.length));
-        assertEquals(source, FastByteBuffer.FastStringBuilder.iso8859BytesToString3(bytes, 0, bytes.length));
-    }
-
-    @Test
-    public void testFastByteBufferAllocators() {
+    void testFastByteBufferAllocators() {
         {
             FastByteBuffer buffer = new FastByteBuffer();
             assertTrue(buffer.capacity() > 0);
@@ -285,7 +271,7 @@ public class IoBufferTests {
     }
 
     @Test
-    public void testFastByteBufferResizing() {
+    void testFastByteBufferResizing() {
         {
             FastByteBuffer buffer = new FastByteBuffer(300);
             assertEquals(300, buffer.capacity());

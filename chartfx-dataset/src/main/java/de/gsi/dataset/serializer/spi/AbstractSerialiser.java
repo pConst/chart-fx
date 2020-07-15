@@ -19,7 +19,7 @@ import de.gsi.dataset.serializer.IoSerialiser;
 public abstract class AbstractSerialiser {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSerialiser.class);
     private static final Map<String, Constructor<Object>> CLASS_CONSTRUCTOR_MAP = new ConcurrentHashMap<>();
-    private final Map<Class<?>, List<FieldSerialiser>> classMap = new ConcurrentHashMap<>();
+    private final Map<Class<?>, List<FieldSerialiser<?>>> classMap = new ConcurrentHashMap<>();
     protected final IoSerialiser ioSerialiser;
     protected Consumer<String> startMarkerFunction;
     protected Consumer<String> endMarkerFunction;
@@ -31,7 +31,7 @@ public abstract class AbstractSerialiser {
         this.ioSerialiser = ioSerialiser;
     }
 
-    public void addClassDefinition(FieldSerialiser serialiser) {
+    public void addClassDefinition(FieldSerialiser<?> serialiser) {
         if (serialiser == null) {
             throw new IllegalArgumentException("serialiser must not be null");
         }
@@ -42,8 +42,7 @@ public abstract class AbstractSerialiser {
             throw new IllegalArgumentException("types must not be null");
         }
         synchronized (knownClasses()) {
-            final List<FieldSerialiser> list = knownClasses().computeIfAbsent(serialiser.getClassPrototype(),
-                    key -> new ArrayList<>());
+            final List<FieldSerialiser<?>> list = knownClasses().computeIfAbsent(serialiser.getClassPrototype(), key -> new ArrayList<>());
 
             if (list.isEmpty() || !list.contains(serialiser)) {
                 list.add(serialiser);
@@ -70,19 +69,19 @@ public abstract class AbstractSerialiser {
         return true;
     }
 
-    public abstract Object deserialiseObject(final Object obj) throws IllegalAccessException;
+    public abstract Object deserialiseObject(final Object obj);
 
-    public FieldSerialiser findFieldSerialiserForKnownClassOrInterface(Class<?> clazz, List<Class<?>> classGenericArguments) {
+    public FieldSerialiser<?> findFieldSerialiserForKnownClassOrInterface(Class<?> clazz, List<Class<?>> classGenericArguments) {
         if (clazz == null) {
             throw new IllegalArgumentException("clazz must not be null");
         }
-        final List<FieldSerialiser> directClassMatchList = classMap.get(clazz);
+        final List<FieldSerialiser<?>> directClassMatchList = classMap.get(clazz);
         if (directClassMatchList != null && !directClassMatchList.isEmpty()) {
             if (directClassMatchList.size() == 1 || classGenericArguments == null || classGenericArguments.isEmpty()) {
                 return directClassMatchList.get(0);
             }
             // more than one possible serialiser implementation
-            for (final FieldSerialiser entry : directClassMatchList) {
+            for (final FieldSerialiser<?> entry : directClassMatchList) {
                 if (checkClassCompatibility(classGenericArguments, entry.getGenericsPrototypes())) {
                     return entry;
                 }
@@ -92,7 +91,6 @@ public abstract class AbstractSerialiser {
 
         // did not find FieldSerialiser entry by specific class -> search for assignable interface definitions
 
-        // N.B. slower stream impl: final List<Class<?>> potentialMatchingKeys = this.knownClasses().keySet().stream().filter(k -> k.isAssignableFrom(clazz)).collect(Collectors.toList());
         final List<Class<?>> potentialMatchingKeys = new ArrayList<>(10);
         for (Class<?> testClass : knownClasses().keySet()) {
             if (testClass.isAssignableFrom(clazz)) {
@@ -104,10 +102,9 @@ public abstract class AbstractSerialiser {
             return null;
         }
 
-        // N.B. slower stream impl: final List<FieldSerialiser> interfaceMatchList = potentialMatchingKeys.stream().map(key -> this.knownClasses().get(key)).flatMap(List::stream).collect(Collectors.toList());
-        final List<FieldSerialiser> interfaceMatchList = new ArrayList<>(10);
+        final List<FieldSerialiser<?>> interfaceMatchList = new ArrayList<>(10);
         for (Class<?> testClass : potentialMatchingKeys) {
-            final List<FieldSerialiser> fieldSerialisers = knownClasses().get(testClass);
+            final List<FieldSerialiser<?>> fieldSerialisers = knownClasses().get(testClass);
             if (fieldSerialisers.isEmpty()) {
                 continue;
             }
@@ -119,7 +116,7 @@ public abstract class AbstractSerialiser {
         }
 
         // more than one possible serialiser implementation
-        for (final FieldSerialiser entry : interfaceMatchList) {
+        for (final FieldSerialiser<?> entry : interfaceMatchList) {
             if (checkClassCompatibility(classGenericArguments, entry.getGenericsPrototypes())) {
                 // found generics matching or assignable entry
                 return entry;
@@ -131,23 +128,19 @@ public abstract class AbstractSerialiser {
         return interfaceMatchList.stream().filter(entry -> entry.getGenericsPrototypes().isEmpty()).findFirst().get();
     }
 
-    public Map<Class<?>, List<FieldSerialiser>> knownClasses() {
+    public Map<Class<?>, List<FieldSerialiser<?>>> knownClasses() {
         return classMap;
     }
 
-    public void serialiseObject(final Object obj) throws IllegalAccessException {
-        serialiseObject(obj, ClassDescriptions.get(obj.getClass()), 0);
-    }
-
-    public void serialiseObject(final Object rootObj, final ClassFieldDescription classField, final int recursionDepth) throws IllegalAccessException {
-        // final FieldSerialiser existingSerialiser = classField.getDataType().isScalar() ? classField.getFieldSerialiser() : null;
-        final FieldSerialiser fieldSerialiser = findFieldSerialiserForKnownClassOrInterface(classField.getType(), classField.getActualTypeArguments());
+    public void serialiseObject(final Object rootObj, final ClassFieldDescription classField, final int recursionDepth) {
+        // see final FieldSerialiser existingSerialiser = classField.getDataType().isScalar() ? classField.getFieldSerialiser() : null
+        final FieldSerialiser<?> fieldSerialiser = findFieldSerialiserForKnownClassOrInterface(classField.getType(), classField.getActualTypeArguments());
 
         if (fieldSerialiser != null && recursionDepth != 0) {
             classField.setFieldSerialiser(fieldSerialiser);
             // write field header
             final WireDataFieldDescription header = ioSerialiser.putFieldHeader(classField);
-            fieldSerialiser.getWriterFunction().exec(rootObj, classField);
+            fieldSerialiser.getWriterFunction().accept(ioSerialiser, rootObj, classField);
             ioSerialiser.updateDataEndMarker(header);
             return;
         }

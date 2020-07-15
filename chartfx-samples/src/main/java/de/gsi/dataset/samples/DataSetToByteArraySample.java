@@ -75,7 +75,7 @@ public class DataSetToByteArraySample {
 
         dataSet.autoNotification().set(false);
         dataSet.clearData();
-        dataSet.setName("data set name" + System.currentTimeMillis());
+        dataSet.setName("data set name " + System.currentTimeMillis());
         double oldY = 0;
         for (int n = 0; n < N_SAMPLES; n++) {
             oldY += RandomDataGenerator.random() - 0.5;
@@ -143,16 +143,10 @@ public class DataSetToByteArraySample {
         dsOrig.source = original;
         DataSetWrapper cpOrig = new DataSetWrapper();
 
-        try {
-            byteBuffer.reset(); // '0' writing at start of buffer
-            serialiser.serialiseObject(dsOrig);
-            byteBuffer.reset(); // reset to read position (==0)
-            serialiser.deserialiseObject(cpOrig);
-        } catch (IllegalAccessException e) {
-            if (LOGGER.isErrorEnabled()) {
-                LOGGER.atError().setCause(e).log("access error");
-            }
-        }
+        byteBuffer.reset(); // '0' writing at start of buffer
+        serialiser.serialiseObject(dsOrig);
+        byteBuffer.reset(); // reset to read position (==0)
+        serialiser.deserialiseObject(cpOrig);
 
         if (!(cpOrig.source instanceof DoubleErrorDataSet)) {
             throw new IllegalStateException(
@@ -184,25 +178,18 @@ public class DataSetToByteArraySample {
 
         final long startTime = ProcessingProfiler.getTimeStamp();
         for (int i = 0; i < iterations; i++) {
+            original.setName("data set name " + System.currentTimeMillis());
             byteBuffer.reset(); // '0' writing at start of buffer
-            try {
-                serialiser.serialiseObject(original);
-            } catch (IllegalAccessException e) {
-                if (LOGGER.isErrorEnabled()) {
-                    LOGGER.atError().setCause(e).log("access error");
-                }
-            }
-            byteBuffer.reset(); // reset to read position (==0)
-            try {
-                serialiser.deserialiseObject(cpOrig.source);
-            } catch (IllegalAccessException e) {
-                if (LOGGER.isErrorEnabled()) {
-                    LOGGER.atError().setCause(e).log("access error");
-                }
-            }
+            serialiser.serialiseObject(dsOrig);
 
-            if (!dsOrig.source.getName().equals(cpOrig.source.getName()) || !dsOrig.source.equals(cpOrig.source)) {
-                LOGGER.atError().log("ERROR data set does not match -> potential streaming error at index = " + i);
+            byteBuffer.reset(); // reset to read position (==0)
+            serialiser.deserialiseObject(cpOrig);
+
+            if (!dsOrig.source.getName().equals(cpOrig.source.getName())) {
+                LOGGER.atError().addArgument(dsOrig.source.getName()).addArgument(cpOrig.source.getName()).log("ERROR DataSet '{}' does not match '{}' -> potential streaming error at index = " + i);
+                if (!dsOrig.source.equals(cpOrig.source)) {
+                    throw new IllegalStateException("DataSet mismatch");
+                }
                 break;
             }
         }
@@ -393,8 +380,7 @@ public class DataSetToByteArraySample {
         ClassDescriptions.get(DoubleErrorDataSet.class).printFieldStructure();
 
         // string based performance
-        // N.B. loops only once, since this serialiser is relatively slow (~30
-        // MB/s)
+        // N.B. loops only once, since this serialiser is relatively slow (~30 MB/s)
         sample.testPerformance(100, true, false, true);
         sample.testPerformance(100, true, false, false);
         sample.clearGarbage();
@@ -421,7 +407,7 @@ public class DataSetToByteArraySample {
 
         for (boolean bit32 : new Boolean[] { false }) {
             for (boolean header : new Boolean[] { true }) {
-                for (int i = 0; i < 3 * iterations; i++) {
+                for (int i = 0; i < 5 * iterations; i++) {
                     sample.testGenericSerializerPerformance(nLoops, header, bit32);
                 }
                 sample.clearGarbage();
