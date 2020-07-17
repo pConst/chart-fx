@@ -42,11 +42,11 @@ public interface IoSerialiser {
 
     WireDataFieldDescription parseIoStream(final boolean readHeader);
 
-    <E> void put(Collection<E> collection);
+    <E> void put(Collection<E> collection, Class<?> genericType);
 
     void put(Enum<?> enumeration);
 
-    <K, V> void put(Map<K, V> map);
+    <K, V> void put(Map<K, V> map, Class<?> keyType, Class<?> valueType);
 
     void putEndMarker(String markerName);
 

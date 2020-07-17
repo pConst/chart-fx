@@ -428,21 +428,21 @@ class BinarySerialiserTests {
         final List<Integer> list = Arrays.asList(1, 2, 3);
         positionBefore.add(buffer.position());
         ioSerialiser.putFieldHeader("collection", DataType.COLLECTION);
-        ioSerialiser.put(list);
+        ioSerialiser.put(list, Integer.class);
         positionAfter.add(buffer.position());
 
         // add Collection - Set<E>
         final Set<Integer> set = Set.of(1, 2, 3);
         positionBefore.add(buffer.position());
         ioSerialiser.putFieldHeader("set", DataType.SET);
-        ioSerialiser.put(set);
+        ioSerialiser.put(set, Integer.class);
         positionAfter.add(buffer.position());
 
         // add Collection - Queue<E>
         final Queue<Integer> queue = new LinkedList<>(Arrays.asList(1, 2, 3));
         positionBefore.add(buffer.position());
         ioSerialiser.putFieldHeader("queue", DataType.QUEUE);
-        ioSerialiser.put(queue);
+        ioSerialiser.put(queue, Integer.class);
         positionAfter.add(buffer.position());
 
         // add Map
@@ -450,7 +450,7 @@ class BinarySerialiserTests {
         list.forEach(item -> map.put(item, "Item#" + item.toString()));
         positionBefore.add(buffer.position());
         ioSerialiser.putFieldHeader("map", DataType.MAP);
-        ioSerialiser.put(map);
+        ioSerialiser.put(map, Integer.class, String.class);
         positionAfter.add(buffer.position());
 
         // add Enum
@@ -671,24 +671,24 @@ class BinarySerialiserTests {
 
         final Collection<Integer> collection = Arrays.asList(1, 2, 3);
         ioSerialiser.putFieldHeader("collection", DataType.COLLECTION);
-        ioSerialiser.put(collection); // add Collection - List<E>
+        ioSerialiser.put(collection, Integer.class); // add Collection - List<E>
 
         final List<Integer> list = Arrays.asList(1, 2, 3);
         ioSerialiser.putFieldHeader("list", DataType.LIST);
-        ioSerialiser.put(list); // add Collection - List<E>
+        ioSerialiser.put(list, Integer.class); // add Collection - List<E>
 
         final Set<Integer> set = Set.of(1, 2, 3);
         ioSerialiser.putFieldHeader("set", DataType.SET);
-        ioSerialiser.put(set); // add Collection - Set<E>
+        ioSerialiser.put(set, Integer.class); // add Collection - Set<E>
 
         final Queue<Integer> queue = new LinkedList<>(Arrays.asList(1, 2, 3));
         ioSerialiser.putFieldHeader("queue", DataType.QUEUE);
-        ioSerialiser.put(queue); // add Collection - Queue<E>
+        ioSerialiser.put(queue, Integer.class); // add Collection - Queue<E>
 
         final Map<Integer, String> map = new HashMap<>();
         list.forEach(item -> map.put(item, "Item#" + item.toString()));
         ioSerialiser.putFieldHeader("map", DataType.MAP);
-        ioSerialiser.put(map); // add Map
+        ioSerialiser.put(map, Integer.class, String.class); // add Map
 
         ioSerialiser.putFieldHeader("enum", DataType.ENUM);
         ioSerialiser.put(DataType.ENUM); // add Enum

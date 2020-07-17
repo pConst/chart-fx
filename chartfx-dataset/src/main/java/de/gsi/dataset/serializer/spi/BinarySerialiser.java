@@ -465,10 +465,10 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public <E> void put(final Collection<E> collection) {
+    public <E> void put(final Collection<E> collection, Class<?> genericType) {
         final Object[] values = collection.toArray();
         final int nElements = collection.size();
-        final DataType valueDataType = nElements == 0 ? DataType.OTHER : DataType.fromClassType(values[0].getClass());
+        final DataType valueDataType = nElements == 0 ? DataType.fromClassType(genericType) : DataType.fromClassType(values[0].getClass());
         final int entrySize = 17; // as an initial estimate
 
         buffer.putArraySizeDescriptor(nElements);
@@ -508,13 +508,13 @@ public class BinarySerialiser implements IoSerialiser { // NOPMD - omen est omen
     }
 
     @Override
-    public <K, V> void put(final Map<K, V> map) {
+    public <K, V> void put(final Map<K, V> map, Class<?> keyType, Class<?> valueType) {
         final Object[] keySet = map.keySet().toArray();
         final Object[] valueSet = map.values().toArray();
         final int nElements = keySet.length;
         buffer.putArraySizeDescriptor(nElements);
-        final DataType keyDataType = nElements == 0 ? DataType.OTHER : DataType.fromClassType(keySet[0].getClass());
-        final DataType valueDataType = nElements == 0 ? DataType.OTHER : DataType.fromClassType(valueSet[0].getClass());
+        final DataType keyDataType = nElements == 0 ? DataType.fromClassType(keyType) : DataType.fromClassType(keySet[0].getClass());
+        final DataType valueDataType = nElements == 0 ? DataType.fromClassType(valueType) : DataType.fromClassType(valueSet[0].getClass());
         // convert into two linear arrays one of K and the other for V streamer encoding as
         // <1 (int)><n_map (int)><type K (byte)<type V (byte)> <Length, [K_0,...,K_length]> <Length, [V_0, ..., V_length]>
         final int entrySize = 17; // as an initial estimate

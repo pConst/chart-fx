@@ -56,7 +56,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
             origCollection.clear();
             return io.getCollection(origCollection);
         }; // return function
-        final FieldSerialiser.TriConsumer collectionWriter = (io, obj, field) -> io.put((Collection<?>) field.getField().get(obj)); // writer
+        final FieldSerialiser.TriConsumer collectionWriter = (io, obj, field) -> io.put((Collection<?>) field.getField().get(obj), field.getActualTypeArguments().get(0)); // writer
 
         addClassDefinition(new FieldSerialiser<>(collectionReader, collectionReturn, collectionWriter, Collection.class));
         addClassDefinition(new FieldSerialiser<>(collectionReader, collectionReturn, collectionWriter, List.class));
@@ -83,7 +83,7 @@ public class IoBufferSerialiser extends AbstractSerialiser {
                     origMap.clear();
                     return io.getMap(origMap);
                 }, // return
-                (io, obj, field) -> io.put((Map<?, ?>) field.getField().get(obj)), // writer
+                (io, obj, field) -> io.put((Map<?, ?>) field.getField().get(obj), field.getActualTypeArguments().get(0), field.getActualTypeArguments().get(1)), // writer
                 Map.class));
 
         FieldDataSetHelper.register(this);

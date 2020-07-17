@@ -295,7 +295,7 @@ public class DataSetSerialiser { // NOPMD
         }
         if (!labelMap.isEmpty()) {
             ioSerialiser.putFieldHeader(DATA_LABELS, DataType.MAP);
-            ioSerialiser.put(labelMap);
+            ioSerialiser.put(labelMap, Integer.class, String.class);
         }
 
         final Map<Integer, String> styleMap = new HashMap<>();
@@ -307,7 +307,7 @@ public class DataSetSerialiser { // NOPMD
         }
         if (!styleMap.isEmpty()) {
             ioSerialiser.putFieldHeader(DATA_STYLES, DataType.MAP);
-            ioSerialiser.put(styleMap);
+            ioSerialiser.put(styleMap, Integer.class, String.class);
         }
     }
 
@@ -388,7 +388,7 @@ public class DataSetSerialiser { // NOPMD
         ioSerialiser.putFieldHeader(ERROR_LIST, DataType.STRING_ARRAY);
         ioSerialiser.getBuffer().putStringArray(metaDataSet.getErrorList().toArray(new String[0]));
         ioSerialiser.putFieldHeader(META_INFO, DataType.MAP);
-        ioSerialiser.put(metaDataSet.getMetaInfo());
+        ioSerialiser.put(metaDataSet.getMetaInfo(), String.class, String.class);
     }
 
     /**
