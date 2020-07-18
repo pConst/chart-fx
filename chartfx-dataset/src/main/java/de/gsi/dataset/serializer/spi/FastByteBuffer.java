@@ -10,7 +10,6 @@ import static sun.misc.Unsafe.ARRAY_LONG_BASE_OFFSET;
 import static sun.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
 
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -38,6 +37,7 @@ public class FastByteBuffer implements IoBuffer {
     public static final int SIZE_OF_LONG = 8;
     public static final int SIZE_OF_FLOAT = 4;
     public static final int SIZE_OF_DOUBLE = 8;
+    public static final String INVALID_UTF_8 = "Invalid UTF-8";
     private static final int DEFAULT_INITIAL_CAPACITY = 1 << 10;
     private static final int DEFAULT_MIN_CAPACITY_INCREASE = 1 << 10;
     private static final int DEFAULT_MAX_CAPACITY_INCREASE = 100 * (1 << 10);
@@ -49,7 +49,7 @@ public class FastByteBuffer implements IoBuffer {
             Field logger = cls.getDeclaredField("logger");
 
             final Field field = Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
+            field.setAccessible(true); //NOSONAR
             unsafe = (Unsafe) field.get(null);
             unsafe.putObjectVolatile(cls, unsafe.staticFieldOffset(logger), null);
 
@@ -59,6 +59,7 @@ public class FastByteBuffer implements IoBuffer {
     }
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final StringBuilder builder = new StringBuilder(100);
     private int position;
     private int limit;
     private byte[] buffer;
@@ -138,7 +139,7 @@ public class FastByteBuffer implements IoBuffer {
     }
 
     /**
-     * Forces FastByteBUffer to contain the given number of entries, preserving just a part of the array.
+     * Forces FastByteBuffer to contain the given number of entries, preserving just a part of the array.
      *
      * @param length the new minimum length for this array.
      * @param preserve the number of elements of the old buffer that shall be preserved in case a new allocation is
@@ -360,9 +361,12 @@ public class FastByteBuffer implements IoBuffer {
             return this.getStringISO8859();
         }
         final int arraySize = getInt(); // for C++ zero terminated string
-        final String str = new String(buffer, position, arraySize - 1, StandardCharsets.UTF_8);
+        // alt: final String str = new String(buffer, position, arraySize - 1, StandardCharsets.UTF_8)
+        decodeUTF8(buffer, position, arraySize - 1, builder);
+
         position += arraySize; // N.B. +1 larger to be compatible with C++ zero terminated string
-        return str;
+        //return str;
+        return builder.toString();
     }
 
     @Override
@@ -381,9 +385,9 @@ public class FastByteBuffer implements IoBuffer {
     @Override
     public String getStringISO8859() {
         final int arraySize = getInt(); // for C++ zero terminated string
-        //alt safe-fallback final String str = new String(buffer,  position, arraySize - 1, StandardCharsets.ISO_8859_1);
-        final String str = new String(buffer, 0, position, arraySize - 1); // NOPMD NOSONAR fastest alternative
-        // final String str = FastStringBuilder.iso8859BytesToString(buffer, position, arraySize - 1);
+        //alt safe-fallback final String str = new String(buffer,  position, arraySize - 1, StandardCharsets.ISO_8859_1)
+        final String str = new String(buffer, 0, position, arraySize - 1); //NOSONAR //NOPMD fastest alternative that is public API
+        // final String str = FastStringBuilder.iso8859BytesToString(buffer, position, arraySize - 1)
         position += arraySize; // N.B. +1 larger to be compatible with C++ zero terminated string
         return str;
     }
@@ -701,7 +705,7 @@ public class FastByteBuffer implements IoBuffer {
         position += SIZE_OF_INT;
         // write string-to-byte (in-place)
         ensureAdditionalCapacity(3 * utf16StringLength + 1);
-        final int strLength = encodeUTF8(string, buffer, ARRAY_BYTE_BASE_OFFSET, position, 3 * utf16StringLength);
+        final int strLength = encodeUTF8(string, buffer, position, 3 * utf16StringLength);
         final int endPos = position + strLength;
 
         // write length of string byte representation
@@ -765,7 +769,7 @@ public class FastByteBuffer implements IoBuffer {
         final int initialPos = position;
         position += SIZE_OF_INT;
         // write string-to-byte (in-place)
-        final int strLength = encodeISO8859(string, buffer, ARRAY_BYTE_BASE_OFFSET, position, string.length());
+        final int strLength = encodeISO8859(string, buffer, position, string.length());
         final int endPos = position + strLength;
 
         // write length of string byte representation
@@ -840,62 +844,6 @@ public class FastByteBuffer implements IoBuffer {
         limit = newBuffer.length;
     }
 
-    private static int encodeISO8859(final String sequence, final byte[] bytes, final long baseOffset, final int offset, final int length) {
-        // encode to ISO_8859_1
-        final long j = baseOffset + offset;
-        for (int i = 0; i < length; i++) {
-            unsafe.putByte(bytes, j + i, (byte) (sequence.charAt(i) & 0xFF));
-        }
-        return length;
-    }
-
-    private static int encodeUTF8(final CharSequence sequence, final byte[] bytes, final int baseOffset, final int offset, final int length) {
-        int utf16Length = sequence.length();
-        int j = baseOffset + offset;
-        int i = 0;
-        int limit = baseOffset + offset + length;
-        // Designed to take advantage of https://wiki.openjdk.java.net/display/HotSpot/RangeCheckElimination
-        for (char c; i < utf16Length && i + j < limit && (c = sequence.charAt(i)) < 0x80; i++) {
-            unsafe.putByte(bytes, (long) j + i, (byte) c);
-        }
-        if (i == utf16Length) {
-            return utf16Length;
-        }
-        j += i;
-        for (; i < utf16Length; i++) {
-            final char c = sequence.charAt(i);
-            if (c < 0x80 && j < limit) {
-                unsafe.putByte(bytes, j++, (byte) c);
-            } else if (c < 0x800 && j <= limit - 2) { // 11 bits, two UTF-8 bytes
-                unsafe.putByte(bytes, j++, (byte) ((0xF << 6) | (c >>> 6)));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & c)));
-            } else if ((c < Character.MIN_SURROGATE || Character.MAX_SURROGATE < c) && j <= limit - 3) {
-                // Maximum single-char code point is 0xFFFF, 16 bits, three UTF-8 bytes
-                unsafe.putByte(bytes, j++, (byte) ((0xF << 5) | (c >>> 12)));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & (c >>> 6))));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & c)));
-            } else if (j <= limit - 4) {
-                // Minimum code point represented by a surrogate pair is 0x10000, 17 bits, four UTF-8 bytes
-                final char low;
-                if (i + 1 == sequence.length() || !Character.isSurrogatePair(c, (low = sequence.charAt(++i)))) {
-                    throw new IllegalArgumentException("Unpaired surrogate at index " + (i - 1));
-                }
-                int codePoint = Character.toCodePoint(c, low);
-                unsafe.putByte(bytes, j++, (byte) ((0xF << 4) | (codePoint >>> 18)));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & (codePoint >>> 12))));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & (codePoint >>> 6))));
-                unsafe.putByte(bytes, j++, (byte) (0x80 | (0x3F & codePoint)));
-            } else {
-                throw new ArrayIndexOutOfBoundsException("Failed writing " + c + " at index " + j);
-            }
-        }
-        return j - baseOffset - offset;
-    }
-
-    private static void copyMemory(final Object srcBase, final int srcOffset, final Object destBase, final int destOffset, final int nBytes) {
-        unsafe.copyMemory(srcBase, srcOffset, destBase, destOffset, nBytes);
-    }
-
     /**
      * Wraps a given byte array into FastByteBuffer
      * <p>
@@ -919,5 +867,179 @@ public class FastByteBuffer implements IoBuffer {
      */
     public static FastByteBuffer wrap(final byte[] byteArray, final int length) {
         return new FastByteBuffer(byteArray, length);
+    }
+
+    private static void copyMemory(final Object srcBase, final int srcOffset, final Object destBase, final int destOffset, final int nBytes) {
+        unsafe.copyMemory(srcBase, srcOffset, destBase, destOffset, nBytes);
+    }
+
+    // Fast UTF-8 byte-array to String(Builder) decode - code originally based on Google's PrototBuffer implementation and since modified
+    @SuppressWarnings("PMD")
+    private static void decodeUTF8(byte[] bytes, int offset, int size, StringBuilder result) { //NOSONAR
+        // Bitwise OR combines the sign bits so any negative value fails the check.
+        // N.B. many code snippets are in-lined for performance reasons (~10% performance improvement) ... this is a JIT hot spot.
+        if ((offset | size | bytes.length - offset - size) < 0) {
+            throw new ArrayIndexOutOfBoundsException(String.format("buffer length=%d, offset=%d, size=%d", bytes.length, offset, size));
+        }
+
+        // The longest possible resulting String is the same as the number of input bytes, when it is
+        // all ASCII. For other cases, this over-allocates and we will truncate in the end.
+        result.setLength(size);
+
+        // keep separate int/long counters so we don't have to convert types at every call
+        int remaining = size;
+        long readPos = (long) ARRAY_BYTE_BASE_OFFSET + offset;
+        int resultPos = 0;
+
+        // Optimize for 100% ASCII (Hotspot loves small simple top-level loops like this).
+        // This simple loop stops when we encounter a byte >= 0x80 (i.e. non-ASCII).
+        while (remaining > 0) {
+            final byte byte1 = unsafe.getByte(bytes, readPos);
+            if (byte1 < 0) {
+                // is more than one byte ie. non-ASCII (unsigned byte value larger > 127 <-> negative number for signed byte
+                break;
+            }
+            readPos++;
+            remaining--;
+            result.setCharAt(resultPos++, (char) byte1);
+        }
+
+        while (remaining > 0) {
+            final byte byte1 = unsafe.getByte(bytes, readPos++);
+            remaining--;
+            if (byte1 >= 0) { // is one byte (ie. ASCII-type encoding)
+                result.setCharAt(resultPos++, (char) byte1);
+                // It's common for there to be multiple ASCII characters in a run mixed in, so add an extra optimized loop to take care of these runs.
+                while (remaining > 0) {
+                    final byte b = unsafe.getByte(bytes, readPos);
+                    if (b < 0) { // is not one byte
+                        break;
+                    }
+                    readPos++;
+                    remaining--;
+                    result.setCharAt(resultPos++, (char) b);
+                }
+            } else if (byte1 < (byte) 0xE0) { // is two bytes
+                if (remaining < 1) {
+                    throw new IllegalArgumentException(INVALID_UTF_8);
+                }
+                final byte byte2 = unsafe.getByte(bytes, readPos++);
+                remaining--;
+                final int resultPos1 = resultPos++;
+                // Simultaneously checks for illegal trailing-byte in leading position (<= '11000000') and overlong 2-byte, '11000001'.
+                if (byte1 < (byte) 0xC2) {
+                    throw new IllegalArgumentException(INVALID_UTF_8 + ": Illegal leading byte in 2 bytes UTF");
+                }
+                if (byte2 > (byte) 0xBF) { // is not trailing byte
+                    throw new IllegalArgumentException(INVALID_UTF_8 + ": Illegal trailing byte in 2 bytes UTF");
+                }
+                result.setCharAt(resultPos1, (char) (((byte1 & 0x1F) << 6) | byte2 & 0x3F));
+            } else if (byte1 < (byte) 0xF0) { // is three bytes
+                if (remaining < 2) {
+                    throw new IllegalArgumentException(INVALID_UTF_8);
+                }
+                /* byte2 */
+                /* byte3 */
+                final byte byte2 = unsafe.getByte(bytes, readPos++);
+                final byte byte3 = unsafe.getByte(bytes, readPos++);
+                final int resultPos1 = resultPos++;
+                if (byte2 > (byte) 0xBF // is not trailing byte
+                        // overlong? 5 most significant bits must not all be zero
+                        || (byte1 == (byte) 0xE0 && byte2 < (byte) 0xA0)
+                        // check for illegal surrogate codepoints
+                        || (byte1 == (byte) 0xED && byte2 >= (byte) 0xA0)
+                        || byte3 > (byte) 0xBF) { // is not trailing byte
+                    throw new IllegalArgumentException(INVALID_UTF_8);
+                }
+                result.setCharAt(resultPos1, (char) (((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | byte3 & 0x3F));
+                remaining -= 2;
+            } else { // is four bytes
+                if (remaining < 3) {
+                    throw new IllegalArgumentException(INVALID_UTF_8);
+                }
+                // handle four byte UTF
+                /* byte2 */
+                /* byte3 */
+                /* byte4 */
+                final byte byte2 = unsafe.getByte(bytes, readPos++);
+                final byte byte3 = unsafe.getByte(bytes, readPos++);
+                final byte byte4 = unsafe.getByte(bytes, readPos++);
+                final int resultPos1 = resultPos++;
+                if (byte2 > (byte) 0xBF
+                        // Check that 1 <= plane <= 16.  Tricky optimized form of:
+                        //   valid 4-byte leading byte?
+                        // if (byte1 > (byte) 0xF4 ||
+                        //   overlong? 4 most significant bits must not all be zero
+                        //     byte1 == (byte) 0xF0 && byte2 < (byte) 0x90 ||
+                        //   codepoint larger than the highest code point (U+10FFFF)? byte1 == (byte) 0xF4 && byte2 > (byte) 0x8F)
+                        || (((byte1 << 28) + (byte2 - (byte) 0x90)) >> 30) != 0
+                        || byte3 > (byte) 0xBF
+                        || byte4 > (byte) 0xBF) {
+                    throw new IllegalArgumentException(INVALID_UTF_8);
+                }
+                final int codepoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) | byte4 & 0x3F;
+                result.setCharAt(resultPos1, (char) ((Character.MIN_HIGH_SURROGATE - (Character.MIN_SUPPLEMENTARY_CODE_POINT >>> 10)) + (codepoint >>> 10)));
+                result.setCharAt(resultPos1 + 1, (char) (Character.MIN_LOW_SURROGATE + (codepoint & 0x3ff)));
+                remaining -= 3;
+                // 4-byte case requires two chars.
+                resultPos++;
+            }
+        }
+
+        result.setLength(resultPos);
+    }
+
+    private static int encodeISO8859(final String sequence, final byte[] bytes, final int offset, final int length) {
+        // encode to ISO_8859_1
+        final int base = ARRAY_BYTE_BASE_OFFSET + offset;
+        for (int i = 0; i < length; i++) {
+            unsafe.putByte(bytes, (long) base + i, (byte) (sequence.charAt(i) & 0xFF));
+        }
+        return length;
+    }
+
+    // Fast UTF-8 String (CharSequence) to byte-array encoder - code originally based on Google's PrototBuffer implementation and since modified
+    @SuppressWarnings("PMD")
+    private static int encodeUTF8(final CharSequence sequence, final byte[] bytes, final int offset, final int length) { //NOSONAR
+        int utf16Length = sequence.length();
+        int base = ARRAY_BYTE_BASE_OFFSET + offset;
+        int i = 0;
+        int limit = base + length;
+        // Designed to take advantage of https://wiki.openjdk.java.net/display/HotSpot/RangeCheckElimination
+        for (char c; i < utf16Length && base + i < limit && (c = sequence.charAt(i)) < 0x80; i++) {
+            unsafe.putByte(bytes, (long) base + i, (byte) c);
+        }
+        if (i == utf16Length) {
+            return utf16Length;
+        }
+        base += i;
+        for (; i < utf16Length; i++) {
+            final char c = sequence.charAt(i);
+            if (c < 0x80 && base < limit) {
+                unsafe.putByte(bytes, base++, (byte) c);
+            } else if (c < 0x800 && base <= limit - 2) { // 11 bits, two UTF-8 bytes
+                unsafe.putByte(bytes, base++, (byte) ((0xF << 6) | (c >>> 6)));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & c)));
+            } else if ((c < Character.MIN_SURROGATE || Character.MAX_SURROGATE < c) && base <= limit - 3) {
+                // Maximum single-char code point is 0xFFFF, 16 bits, three UTF-8 bytes
+                unsafe.putByte(bytes, base++, (byte) ((0xF << 5) | (c >>> 12)));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & (c >>> 6))));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & c)));
+            } else if (base <= limit - 4) {
+                // Minimum code point represented by a surrogate pair is 0x10000, 17 bits, four UTF-8 bytes
+                final char low;
+                if (i + 1 == sequence.length() || !Character.isSurrogatePair(c, (low = sequence.charAt(++i)))) {
+                    throw new IllegalArgumentException("Unpaired surrogate at index " + (i - 1));
+                }
+                final int codePoint = Character.toCodePoint(c, low);
+                unsafe.putByte(bytes, base++, (byte) ((0xF << 4) | (codePoint >>> 18)));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & (codePoint >>> 12))));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & (codePoint >>> 6))));
+                unsafe.putByte(bytes, base++, (byte) (0x80 | (0x3F & codePoint)));
+            } else {
+                throw new ArrayIndexOutOfBoundsException("Failed writing " + c + " at index " + base);
+            }
+        }
+        return base - ARRAY_BYTE_BASE_OFFSET - offset;
     }
 }

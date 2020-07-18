@@ -3,6 +3,7 @@ package de.gsi.dataset.serializer.spi.iobuffer;
 import static de.gsi.dataset.DataSet.DIM_X;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,9 @@ import de.gsi.dataset.DataSetMetaData;
 import de.gsi.dataset.serializer.DataType;
 import de.gsi.dataset.serializer.FieldDescription;
 import de.gsi.dataset.serializer.IoSerialiser;
+import de.gsi.dataset.spi.AbstractDataSet;
 import de.gsi.dataset.spi.DataSetBuilder;
+import de.gsi.dataset.spi.utils.StringHashMapList;
 import de.gsi.dataset.utils.AssertUtils;
 import de.gsi.dataset.utils.GenericsHelper;
 
@@ -268,8 +271,22 @@ public class DataSetSerialiser { // NOPMD
     }
 
     protected void writeDataLabelsToStream(final DataSet dataSet) {
+        if (dataSet instanceof AbstractDataSet) {
+            final StringHashMapList labelMap = ((AbstractDataSet<?>) dataSet).getDataLabelMap();
+            if (!labelMap.isEmpty()) {
+                ioSerialiser.putFieldHeader(DATA_LABELS, DataType.MAP);
+                ioSerialiser.put(labelMap, Integer.class, String.class);
+            }
+            final StringHashMapList stlyeMap = ((AbstractDataSet<?>) dataSet).getDataStyleMap();
+            if (!stlyeMap.isEmpty()) {
+                ioSerialiser.putFieldHeader(DATA_STYLES, DataType.MAP);
+                ioSerialiser.put(stlyeMap, Integer.class, String.class);
+            }
+            return;
+        }
+
         final int dataCount = dataSet.getDataCount(DIM_X);
-        final Map<Integer, String> labelMap = new ConcurrentHashMap<>();
+        final Map<Integer, String> labelMap = new HashMap<>();
         for (int index = 0; index < dataCount; index++) {
             final String label = dataSet.getDataLabel(index);
             if ((label != null) && !label.isEmpty()) {
@@ -281,7 +298,7 @@ public class DataSetSerialiser { // NOPMD
             ioSerialiser.put(labelMap);
         }
 
-        final Map<Integer, String> styleMap = new ConcurrentHashMap<>();
+        final Map<Integer, String> styleMap = new HashMap<>();
         for (int index = 0; index < dataCount; index++) {
             final String style = dataSet.getStyle(index);
             if ((style != null) && !style.isEmpty()) {

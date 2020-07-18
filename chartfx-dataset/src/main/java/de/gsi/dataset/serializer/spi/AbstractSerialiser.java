@@ -2,7 +2,12 @@ package de.gsi.dataset.serializer.spi;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -18,8 +23,10 @@ import de.gsi.dataset.serializer.IoSerialiser;
  */
 public abstract class AbstractSerialiser {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSerialiser.class);
+    public static final String SHOULD_NOT_REACH_HERE_FOR = "should not reach here for ";
     private static final Map<String, Constructor<Object>> CLASS_CONSTRUCTOR_MAP = new ConcurrentHashMap<>();
-    private final Map<Class<?>, List<FieldSerialiser<?>>> classMap = new ConcurrentHashMap<>();
+    private final Map<Class<?>, List<FieldSerialiser<?>>> classMap = new HashMap<>();
+    private final Map<FieldSerialiserKey, FieldSerialiserValue> cachedFieldMatch = new HashMap<>();
     protected final IoSerialiser ioSerialiser;
     protected Consumer<String> startMarkerFunction;
     protected Consumer<String> endMarkerFunction;
@@ -71,7 +78,20 @@ public abstract class AbstractSerialiser {
 
     public abstract Object deserialiseObject(final Object obj);
 
-    public FieldSerialiser<?> findFieldSerialiserForKnownClassOrInterface(Class<?> clazz, List<Class<?>> classGenericArguments) {
+    public FieldSerialiser<?> cacheFindFieldSerialiser(Class<?> clazz, List<Class<?>> classGenericArguments) {
+        // odd construction is needed since 'computeIfAbsent' cannot place 'null' element into the Map and since 'null' has a double interpretation of
+        // a) a non-initialiser map value
+        // b) a class for which no custom serialiser exist
+        return cachedFieldMatch.computeIfAbsent(new FieldSerialiserKey(clazz, classGenericArguments), key -> new FieldSerialiserValue(findFieldSerialiser(clazz, classGenericArguments))).get();
+    }
+
+    /**
+     * find FieldSerialiser for known class, interface and corresponding generics
+     * @param clazz the class or interface
+     * @param classGenericArguments optional generics arguments
+     * @return FieldSerialiser matching the base class/interface and generics arguments
+     */
+    public FieldSerialiser<?> findFieldSerialiser(Class<?> clazz, List<Class<?>> classGenericArguments) {
         if (clazz == null) {
             throw new IllegalArgumentException("clazz must not be null");
         }
@@ -133,8 +153,8 @@ public abstract class AbstractSerialiser {
     }
 
     public void serialiseObject(final Object rootObj, final ClassFieldDescription classField, final int recursionDepth) {
-        // see final FieldSerialiser existingSerialiser = classField.getDataType().isScalar() ? classField.getFieldSerialiser() : null
-        final FieldSerialiser<?> fieldSerialiser = findFieldSerialiserForKnownClassOrInterface(classField.getType(), classField.getActualTypeArguments());
+        final FieldSerialiser<?> existingSerialiser = classField.getFieldSerialiser();
+        final FieldSerialiser<?> fieldSerialiser = existingSerialiser == null ? cacheFindFieldSerialiser(classField.getType(), classField.getActualTypeArguments()) : existingSerialiser;
 
         if (fieldSerialiser != null && recursionDepth != 0) {
             classField.setFieldSerialiser(fieldSerialiser);
@@ -219,5 +239,48 @@ public abstract class AbstractSerialiser {
             return "";
         }
         return classArguments.stream().map(Class::getSimpleName).collect(Collectors.joining(", ", "<", ">"));
+    }
+
+    private static class FieldSerialiserKey {
+        private final Class<?> clazz;
+        private final List<Class<?>> classGenericArguments;
+
+        private FieldSerialiserKey(Class<?> clazz, List<Class<?>> classGenericArguments) {
+            this.clazz = clazz;
+            this.classGenericArguments = classGenericArguments;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+            final FieldSerialiserKey that = (FieldSerialiserKey) o;
+            return clazz.equals(that.clazz) && classGenericArguments.equals(that.classGenericArguments);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(clazz, classGenericArguments);
+        }
+
+        @Override
+        public String toString() {
+            return "FieldSerialiserKey{"
+                    + "clazz=" + clazz + ", classGenericArguments=" + classGenericArguments + '}';
+        }
+    }
+
+    private static class FieldSerialiserValue {
+        private final FieldSerialiser<?> fieldSerialiser;
+
+        private FieldSerialiserValue(FieldSerialiser<?> fieldSerialiser) {
+            this.fieldSerialiser = fieldSerialiser;
+        }
+
+        private FieldSerialiser<?> get() {
+            return fieldSerialiser;
+        }
     }
 }

@@ -112,8 +112,8 @@ public class ClassFieldDescription implements FieldDescription {
             fieldAccess = new FieldAccess(field);
             classType = field.getType();
             fieldNameHashCode = field.getName().hashCode();
-            fieldName = field.getName();
-            fieldNameRelative = this.parent == null ? fieldName : parent.getFieldNameRelative() + "." + fieldName;
+            fieldName = field.getName().intern();
+            fieldNameRelative = this.parent == null ? fieldName : (parent.getFieldNameRelative() + "." + fieldName).intern();
 
             modifierID = field.getModifiers();
             dataType = DataType.fromClassType(classType);
@@ -121,7 +121,7 @@ public class ClassFieldDescription implements FieldDescription {
             fieldAccess = null; // it's a root, no field definition available
             classType = referenceClass;
             fieldNameHashCode = classType.getName().hashCode();
-            fieldName = classType.getName();
+            fieldName = classType.getName().intern();
             fieldNameRelative = fieldName;
 
             modifierID = classType.getModifiers();
@@ -137,7 +137,7 @@ public class ClassFieldDescription implements FieldDescription {
 
         annotationPresent = fieldUnit != null || fieldDescription != null || fieldDirection != null || !fieldGroups.isEmpty();
 
-        typeName = ClassDescriptions.translateClassName(classType.getTypeName());
+        typeName = ClassDescriptions.translateClassName(classType.getTypeName()).intern();
 
         modPublic = Modifier.isPublic(modifierID);
         modProtected = Modifier.isProtected(modifierID);
@@ -168,11 +168,11 @@ public class ClassFieldDescription implements FieldDescription {
     private static String getFieldUnit(final AnnotatedElement annotatedElement) {
         final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
         if (annotationMeta != null && annotationMeta.length > 0) {
-            return annotationMeta[0].unit();
+            return annotationMeta[0].unit().intern();
         }
         final Unit[] annotationUnit = annotatedElement.getAnnotationsByType(Unit.class);
         if (annotationUnit != null && annotationUnit.length > 0) {
-            return annotationUnit[0].value();
+            return annotationUnit[0].value().intern();
         }
         return null;
     }
@@ -180,11 +180,11 @@ public class ClassFieldDescription implements FieldDescription {
     private static String getFieldDescription(final AnnotatedElement annotatedElement) {
         final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
         if (annotationMeta != null && annotationMeta.length > 0) {
-            return annotationMeta[0].description();
+            return annotationMeta[0].description().intern();
         }
         final Description[] annotationDescription = annotatedElement.getAnnotationsByType(Description.class);
         if (annotationDescription != null && annotationDescription.length > 0) {
-            return annotationDescription[0].value();
+            return annotationDescription[0].value().intern();
         }
         return null;
     }
@@ -192,11 +192,11 @@ public class ClassFieldDescription implements FieldDescription {
     private static String getFieldDirection(final AnnotatedElement annotatedElement) {
         final MetaInfo[] annotationMeta = annotatedElement.getAnnotationsByType(MetaInfo.class);
         if (annotationMeta != null && annotationMeta.length > 0) {
-            return annotationMeta[0].direction();
+            return annotationMeta[0].direction().intern();
         }
         final Direction[] annotationDirection = annotatedElement.getAnnotationsByType(Direction.class);
         if (annotationDirection != null && annotationDirection.length > 0) {
-            return annotationDirection[0].value();
+            return annotationDirection[0].value().intern();
         }
         return null;
     }
@@ -208,6 +208,10 @@ public class ClassFieldDescription implements FieldDescription {
         }
         final Groups[] annotationGroups = annotatedElement.getAnnotationsByType(Groups.class);
         if (annotationGroups != null && annotationGroups.length > 0) {
+            final List<String> ret = new ArrayList<>(annotationGroups[0].value().length);
+            for (int i = 0; i < annotationGroups[0].value().length; i++) {
+                ret.add(annotationGroups[0].value()[i].intern());
+            }
             return Arrays.asList(annotationGroups[0].value());
         }
         return Collections.emptyList();
@@ -286,7 +290,7 @@ public class ClassFieldDescription implements FieldDescription {
         for (int i = 0; i < children.size(); i++) {
             final FieldDescription child = children.get(i);
             final String name = child.getFieldName();
-            if (name == fieldName) { // NOPMD early return if the same String object reference
+            if (name == fieldName) { //NOSONAR //NOPMD early return if the same String object reference
                 return child;
             }
             if (child.getFieldNameHashCode() == fieldNameHashCode && name.equals(fieldName)) {
@@ -425,7 +429,7 @@ public class ClassFieldDescription implements FieldDescription {
             if (getActualTypeArgumentNames().isEmpty()) {
                 genericTypeNames = "";
             } else {
-                genericTypeNames = getActualTypeArgumentNames().stream().collect(Collectors.joining(", ", "<", ">"));
+                genericTypeNames = getActualTypeArgumentNames().stream().collect(Collectors.joining(", ", "<", ">")).intern();
             }
         }
         return genericTypeNames;
@@ -464,7 +468,7 @@ public class ClassFieldDescription implements FieldDescription {
         if (modifierStr == null) {
             // initialise only on a need to basis
             // for performance reasons
-            modifierStr = Modifier.toString(modifierID);
+            modifierStr = Modifier.toString(modifierID).intern();
         }
         return modifierStr;
     }
@@ -645,8 +649,9 @@ public class ClassFieldDescription implements FieldDescription {
     @Override
     public String toString() {
         if (toStringName == null) {
-            toStringName = ClassFieldDescription.class.getSimpleName() + " for: " + getModifierString() + " "
-                           + getTypeName() + " " + getFieldName() + " (hierarchyDepth = " + getHierarchyDepth() + ")";
+            toStringName = (ClassFieldDescription.class.getSimpleName() + " for: " + getModifierString() + " "
+                            + getTypeName() + " " + getFieldName() + " (hierarchyDepth = " + getHierarchyDepth() + ")")
+                                   .intern();
         }
         return toStringName;
     }
@@ -733,7 +738,7 @@ public class ClassFieldDescription implements FieldDescription {
             // get an instance of the otherwise private 'Unsafe' class
             try {
                 final Field field = Unsafe.class.getDeclaredField("theUnsafe");
-                field.setAccessible(true);
+                field.setAccessible(true); //NOSONAR
                 unsafe = (Unsafe) field.get(null);
             } catch (NoSuchFieldException | SecurityException | IllegalAccessException e) {
                 throw new SecurityException(e); // NOPMD
@@ -745,7 +750,7 @@ public class ClassFieldDescription implements FieldDescription {
 
         private FieldAccess(final Field field) {
             this.field = field;
-            field.setAccessible(true);
+            field.setAccessible(true); //NOSONAR
 
             long offset = -1;
             try {
